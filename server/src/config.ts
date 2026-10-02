@@ -16,5 +16,4 @@ export const config = {
   timezone: process.env.APP_TIMEZONE ?? 'America/Sao_Paulo',
   sessionDays: Number(process.env.SESSION_DAYS ?? 7),
   clientDist: path.join(repoRoot, 'client', 'dist'),
-  isProduction: process.env.NODE_ENV === 'production',
 };

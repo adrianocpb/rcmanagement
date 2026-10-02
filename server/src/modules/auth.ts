@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { config } from '../config.js';
 import type { DB } from '../db/connection.js';
 import { SESSION_COOKIE, checkPassword, createSession } from '../lib/auth.js';
 import { HttpError } from '../lib/http.js';
@@ -22,7 +21,7 @@ export function authRouter(db: DB) {
     res.cookie(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.isProduction && process.env.COOKIE_SECURE !== 'false',
+      secure: process.env.COOKIE_SECURE === 'true', // ative ao servir via HTTPS
       expires: expiresAt,
     });
     res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
