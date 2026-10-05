@@ -22,12 +22,15 @@ export function Kanban({
   statuses,
   queryKey,
   sortKey = '',
+  statusFilter,
 }: {
   tasks: Task[];
   statuses: Status[];
   queryKey: unknown[];
   /** Ordenação dos cards dentro de cada coluna; vazio = padrão (prioridade e prazo). */
   sortKey?: IceSortKey | '';
+  /** Filtro de status ativo: mostra somente a coluna desse status. */
+  statusFilter?: number;
 }) {
   const qc = useQueryClient();
   const invalidate = useInvalidateTasks();
@@ -65,7 +68,9 @@ export function Kanban({
     }
   };
 
-  const columns = statuses.filter((s) => s.active || tasks.some((t) => t.status_id === s.id));
+  const columns = statuses.filter(
+    (s) => (statusFilter ? s.id === statusFilter : s.active || tasks.some((t) => t.status_id === s.id)),
+  );
 
   return (
     <>
@@ -88,6 +93,7 @@ export function Kanban({
               tasks={sortByIce(tasks.filter((t) => t.status_id === s.id), sortKey)}
               onOpen={(id) => open(id)}
               onAdd={() => open('new', { status_id: s.id })}
+              single={!!statusFilter}
             />
           ))}
         </div>
@@ -97,13 +103,26 @@ export function Kanban({
   );
 }
 
-function Column({ status, tasks, onOpen, onAdd }: { status: Status; tasks: Task[]; onOpen: (id: number) => void; onAdd: () => void }) {
+function Column({
+  status,
+  tasks,
+  onOpen,
+  onAdd,
+  single,
+}: {
+  status: Status;
+  tasks: Task[];
+  onOpen: (id: number) => void;
+  onAdd: () => void;
+  /** Coluna exibida sozinha (filtro de status): mantém a largura de uma coluna normal. */
+  single?: boolean;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: status.id });
   const overdue = tasks.filter((t) => t.is_overdue).length;
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-w-60 flex-1 basis-0 flex-col rounded-xl border transition-colors ${
+      className={`flex min-w-60 flex-1 basis-0 flex-col rounded-xl border transition-colors ${single ? 'max-w-sm' : ''} ${
         isOver ? 'border-blue-400 bg-blue-50/70' : 'border-slate-200 bg-slate-100/70'
       }`}
     >

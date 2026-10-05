@@ -39,11 +39,9 @@ export function activeFilterCount(f: TaskFilterValues) {
 export function TaskFilters({
   value,
   onChange,
-  hideStatus,
 }: {
   value: TaskFilterValues;
   onChange: (v: TaskFilterValues) => void;
-  hideStatus?: boolean;
 }) {
   const { data: statuses } = useStatuses();
   const { data: users } = useUserOptions();
@@ -69,16 +67,14 @@ export function TaskFilters({
         <Search size={14} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-slate-400" />
         <input className={`input w-44 py-1 pl-7 text-[13px]${on(value.q)}`} placeholder="Buscar título…" value={value.q} onChange={set('q')} />
       </div>
-      {!hideStatus && (
-        <select className={sel + on(value.status_id)} value={value.status_id} onChange={set('status_id')} aria-label="Status">
-          <option value="">Status: todos</option>
-          {statuses?.filter((s) => s.active).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <select className={sel + on(value.status_id)} value={value.status_id} onChange={set('status_id')} aria-label="Status">
+        <option value="">Status: todos</option>
+        {statuses?.filter((s) => s.active).map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
       <select className={sel + on(value.assignee_id)} value={value.assignee_id} onChange={set('assignee_id')} aria-label="Responsável">
         <option value="">Responsável: todos</option>
         {users?.map((u) => (

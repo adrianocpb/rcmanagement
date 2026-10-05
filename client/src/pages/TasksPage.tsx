@@ -105,12 +105,18 @@ export function TasksPage() {
           </>
         }
       />
-      <TaskFilters value={filters} onChange={setFilters} hideStatus={prefs.view === 'kanban'} />
+      <TaskFilters value={filters} onChange={setFilters} />
       <ErrorText error={error} />
       {isLoading || !statuses ? (
         <Spinner />
       ) : prefs.view === 'kanban' ? (
-        <Kanban tasks={tasks ?? []} statuses={statuses} queryKey={queryKey} sortKey={prefs.cardSort} />
+        <Kanban
+          tasks={tasks ?? []}
+          statuses={statuses}
+          queryKey={queryKey}
+          sortKey={prefs.cardSort}
+          statusFilter={filters.status_id ? Number(filters.status_id) : undefined}
+        />
       ) : (
         <TaskTable tasks={tasks ?? []} />
       )}
