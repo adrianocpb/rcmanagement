@@ -40,6 +40,8 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: 'custom', label: 'Personalizado' },
 ];
 
+const DEFAULT_PRESET: Preset = '90';
+
 function presetRange(p: Preset): { from: string; to: string } {
   const today = todayLocal();
   if (p === 'week') {
@@ -53,8 +55,8 @@ function presetRange(p: Preset): { from: string; to: string } {
 }
 
 export function DashboardPage() {
-  const [preset, setPreset] = useState<Preset>('90');
-  const [range, setRange] = useState(presetRange('90'));
+  const [preset, setPreset] = useState<Preset>(DEFAULT_PRESET);
+  const [range, setRange] = useState(presetRange(DEFAULT_PRESET));
   const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '' });
   const { data: users } = useUserOptions();
   const { data: sectors } = useSectors();
@@ -73,13 +75,15 @@ export function DashboardPage() {
     if (p !== 'custom') setRange(presetRange(p));
   };
   const sel = 'input w-auto py-1 text-[13px]';
+  /** Destaca o filtro quando ele está em uso (diferente do padrão). */
+  const on = (active: unknown) => (active ? ' filter-active' : '');
   const setDim = (k: keyof typeof dims) => (e: { target: { value: string } }) => setDims((d) => ({ ...d, [k]: e.target.value }));
 
   return (
     <div>
       <PageHeader title="Dashboard" subtitle="Indicadores de fluxo da área de Desenvolvimento" />
       <div className="card mb-4 flex flex-wrap items-center gap-2 p-2.5">
-        <select className={sel} value={preset} onChange={(e) => onPreset(e.target.value as Preset)} aria-label="Período">
+        <select className={sel + on(preset !== DEFAULT_PRESET)} value={preset} onChange={(e) => onPreset(e.target.value as Preset)} aria-label="Período">
           {PRESETS.map((p) => (
             <option key={p.key} value={p.key}>
               {p.label}
@@ -88,13 +92,13 @@ export function DashboardPage() {
         </select>
         {preset === 'custom' && (
           <>
-            <input type="date" className={sel} value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} aria-label="De" />
+            <input type="date" className={sel + on(true)} value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} aria-label="De" />
             <span className="text-xs text-slate-400">até</span>
-            <input type="date" className={sel} value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} aria-label="Até" />
+            <input type="date" className={sel + on(true)} value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} aria-label="Até" />
           </>
         )}
         <span className="mx-1 h-5 w-px bg-slate-200" />
-        <select className={sel} value={dims.assignee_id} onChange={setDim('assignee_id')} aria-label="Responsável">
+        <select className={sel + on(dims.assignee_id)} value={dims.assignee_id} onChange={setDim('assignee_id')} aria-label="Responsável">
           <option value="">Responsável: todos</option>
           {users?.map((u) => (
             <option key={u.id} value={u.id}>
@@ -102,7 +106,7 @@ export function DashboardPage() {
             </option>
           ))}
         </select>
-        <select className={sel} value={dims.sector_id} onChange={setDim('sector_id')} aria-label="Setor">
+        <select className={sel + on(dims.sector_id)} value={dims.sector_id} onChange={setDim('sector_id')} aria-label="Setor">
           <option value="">Setor: todos</option>
           {sectors?.map((s) => (
             <option key={s.id} value={s.id}>
@@ -110,7 +114,7 @@ export function DashboardPage() {
             </option>
           ))}
         </select>
-        <select className={`${sel} max-w-48`} value={dims.epic_id} onChange={(e) => setDims((d) => ({ ...d, epic_id: e.target.value, outcome_id: '' }))} aria-label="Épico">
+        <select className={`${sel} max-w-48${on(dims.epic_id)}`} value={dims.epic_id} onChange={(e) => setDims((d) => ({ ...d, epic_id: e.target.value, outcome_id: '' }))} aria-label="Épico">
           <option value="">Épico: todos</option>
           {epics?.map((e) => (
             <option key={e.id} value={e.id}>
@@ -118,7 +122,7 @@ export function DashboardPage() {
             </option>
           ))}
         </select>
-        <select className={`${sel} max-w-48`} value={dims.outcome_id} onChange={setDim('outcome_id')} aria-label="Outcome">
+        <select className={`${sel} max-w-48${on(dims.outcome_id)}`} value={dims.outcome_id} onChange={setDim('outcome_id')} aria-label="Outcome">
           <option value="">Outcome: todos</option>
           {outcomes
             ?.filter((o) => !dims.epic_id || String(o.epic_id) === dims.epic_id)

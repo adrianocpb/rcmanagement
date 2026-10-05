@@ -116,7 +116,7 @@ export function OutcomesPage() {
                 </option>
               ))}
             </select>
-            <select className="input w-auto py-1" value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)}>
+            <select className={`input w-auto py-1${epicFilter ? ' filter-active' : ''}`} value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)}>
               <option value="">Épico: todos</option>
               {epics?.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -124,7 +124,9 @@ export function OutcomesPage() {
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <label
+              className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
+            >
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Inativos
             </label>
             <button className="btn-primary" onClick={() => setCreating(true)}>

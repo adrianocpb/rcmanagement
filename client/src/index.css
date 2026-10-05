@@ -29,4 +29,8 @@ body { @apply bg-slate-50 text-slate-800 antialiased; }
   .card { @apply rounded-lg border border-slate-200 bg-white shadow-xs; }
   .th { @apply px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase; }
   .td { @apply px-3 py-2 align-middle text-sm; }
+  /* Filtro em uso (diferente do padrão): borda verde grossa para chamar atenção. */
+  .filter-active {
+    @apply border-green-600 bg-green-50 font-semibold text-green-900 ring-2 ring-green-600;
+  }
 }

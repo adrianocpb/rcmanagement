@@ -27,7 +27,9 @@ export function EpicsPage() {
         subtitle="Nível estratégico: cada épico agrupa outcomes e se conecta a um objetivo/OKR."
         actions={
           <>
-            <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <label
+              className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
+            >
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Mostrar inativos
             </label>
             <button className="btn-primary" onClick={() => setEditing('new')}>

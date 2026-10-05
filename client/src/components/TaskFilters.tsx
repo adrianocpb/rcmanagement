@@ -59,16 +59,18 @@ export function TaskFilters({
     onChange(next);
   };
   const sel = 'input w-auto min-w-0 py-1 text-[13px]';
+  /** Destaca o filtro quando ele está em uso. */
+  const on = (active: unknown) => (active ? ' filter-active' : '');
   const count = activeFilterCount(value);
 
   return (
     <div className="card mb-4 flex flex-wrap items-center gap-2 p-2.5">
       <div className="relative">
         <Search size={14} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-slate-400" />
-        <input className="input w-44 py-1 pl-7 text-[13px]" placeholder="Buscar título…" value={value.q} onChange={set('q')} />
+        <input className={`input w-44 py-1 pl-7 text-[13px]${on(value.q)}`} placeholder="Buscar título…" value={value.q} onChange={set('q')} />
       </div>
       {!hideStatus && (
-        <select className={sel} value={value.status_id} onChange={set('status_id')} aria-label="Status">
+        <select className={sel + on(value.status_id)} value={value.status_id} onChange={set('status_id')} aria-label="Status">
           <option value="">Status: todos</option>
           {statuses?.filter((s) => s.active).map((s) => (
             <option key={s.id} value={s.id}>
@@ -77,7 +79,7 @@ export function TaskFilters({
           ))}
         </select>
       )}
-      <select className={sel} value={value.assignee_id} onChange={set('assignee_id')} aria-label="Responsável">
+      <select className={sel + on(value.assignee_id)} value={value.assignee_id} onChange={set('assignee_id')} aria-label="Responsável">
         <option value="">Responsável: todos</option>
         {users?.map((u) => (
           <option key={u.id} value={u.id}>
@@ -85,7 +87,7 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select className={sel} value={value.requester_id} onChange={set('requester_id')} aria-label="Solicitante">
+      <select className={sel + on(value.requester_id)} value={value.requester_id} onChange={set('requester_id')} aria-label="Solicitante">
         <option value="">Solicitante: todos</option>
         {users?.map((u) => (
           <option key={u.id} value={u.id}>
@@ -93,7 +95,7 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select className={sel} value={value.sector_id} onChange={set('sector_id')} aria-label="Setor">
+      <select className={sel + on(value.sector_id)} value={value.sector_id} onChange={set('sector_id')} aria-label="Setor">
         <option value="">Setor: todos</option>
         {sectors?.map((s) => (
           <option key={s.id} value={s.id}>
@@ -101,7 +103,7 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select className={sel} value={value.priority} onChange={set('priority')} aria-label="Prioridade">
+      <select className={sel + on(value.priority)} value={value.priority} onChange={set('priority')} aria-label="Prioridade">
         <option value="">Prioridade: todas</option>
         {PRIORITY_KEYS.map((k) => (
           <option key={k} value={k}>
@@ -109,7 +111,7 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select className={`${sel} max-w-44`} value={value.epic_id} onChange={set('epic_id')} aria-label="Épico">
+      <select className={`${sel} max-w-44${on(value.epic_id)}`} value={value.epic_id} onChange={set('epic_id')} aria-label="Épico">
         <option value="">Épico: todos</option>
         {epics?.map((e) => (
           <option key={e.id} value={e.id}>
@@ -117,7 +119,7 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select className={`${sel} max-w-44`} value={value.outcome_id} onChange={set('outcome_id')} aria-label="Outcome">
+      <select className={`${sel} max-w-44${on(value.outcome_id)}`} value={value.outcome_id} onChange={set('outcome_id')} aria-label="Outcome">
         <option value="">Outcome: todos</option>
         {outcomes
           ?.filter((o) => !value.epic_id || String(o.epic_id) === value.epic_id)
@@ -127,7 +129,9 @@ export function TaskFilters({
             </option>
           ))}
       </select>
-      <div className="flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5">
+      <div
+        className={`flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5${on(value.from || value.to)}`}
+      >
         <select
           className="bg-transparent py-0.5 text-[13px] text-slate-600 outline-none"
           value={value.period_field}
@@ -142,7 +146,9 @@ export function TaskFilters({
         <span className="text-xs text-slate-400">até</span>
         <input type="date" className="input w-auto py-0.5 text-[13px]" value={value.to} onChange={set('to')} aria-label="Até" />
       </div>
-      <label className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] text-slate-700 select-none hover:bg-slate-50">
+      <label
+        className={`flex cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-[13px] text-slate-700 select-none hover:bg-slate-50${on(value.overdue)}`}
+      >
         <input
           type="checkbox"
           className="accent-red-600"
