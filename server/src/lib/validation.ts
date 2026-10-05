@@ -9,11 +9,6 @@ export const optionalDate = z.preprocess(
   z.string().refine(isValidDate, 'data inválida (use AAAA-MM-DD)').nullable(),
 );
 
-export const requiredDate = z.preprocess(
-  (v) => (v === '' || v === null ? undefined : v),
-  z.string({ error: 'obrigatório' }).refine(isValidDate, 'data inválida (use AAAA-MM-DD)'),
-);
-
 /** Instante ISO opcional; string vazia vira null. */
 export const optionalInstant = z.preprocess(
   emptyToNull,

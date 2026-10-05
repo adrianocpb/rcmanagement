@@ -452,8 +452,8 @@ function TaskForm({
         <Field label="Início previsto">
           <input className="input" type="date" value={f.planned_start_date} onChange={set('planned_start_date')} />
         </Field>
-        <Field label="Conclusão prevista" required>
-          <input className="input" type="date" value={f.planned_end_date} onChange={set('planned_end_date')} required />
+        <Field label="Conclusão prevista">
+          <input className="input" type="date" value={f.planned_end_date} onChange={set('planned_end_date')} />
         </Field>
       </div>
 

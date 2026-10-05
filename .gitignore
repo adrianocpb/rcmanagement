@@ -6,3 +6,4 @@ data/*.db-*
 .env
 screenshots/tmp/
 *.tsbuildinfo
+data/backups/

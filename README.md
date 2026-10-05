@@ -42,6 +42,22 @@ Acessos de demonstração:
 | João | joao@empresa.com | 123456 | Administrador |
 | Maria, Pedro, Ana | maria@ / pedro@ / ana@empresa.com | 123456 | Usuário |
 
+## Importar a planilha de demandas (CSV)
+
+Com o sistema **desligado**, na pasta do projeto:
+
+```bash
+npm run importar -- caminho\planilha.csv --simular   # mostra o que seria importado, sem gravar
+npm run importar -- caminho\planilha.csv             # importa de fato
+```
+
+- Antes de gravar, é feita uma cópia de segurança do banco em `data/backups/`.
+- Pode ser executado de novo sem duplicar: tarefas com o mesmo título são ignoradas.
+- Aceita o CSV exportado pelo Excel (Windows-1252 ou UTF-8; vírgula ou ponto e vírgula; datas
+  mês/dia/ano ou dia/mês/ano, detectadas automaticamente).
+- Regras de conversão (status, setores, títulos, observações etc.) documentadas no início de
+  `server/src/db/import-csv.ts`.
+
 ## Produção
 
 ```bash

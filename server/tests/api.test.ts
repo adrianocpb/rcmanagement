@@ -42,7 +42,11 @@ describe('tarefas', () => {
   it('valida campos obrigatórios', async () => {
     const res = await ctx.agent.post('/api/tasks').send({ title: 'x' }).expect(400);
     expect(res.body.error).toContain('sector_id');
-    await ctx.agent.post('/api/tasks').send({ ...baseTask, planned_end_date: '' }).expect(400);
+    // Prazo é opcional: sem prazo, a tarefa nunca fica atrasada
+    const semPrazo = await ctx.agent.post('/api/tasks').send({ ...baseTask, planned_end_date: '' }).expect(201);
+    expect(semPrazo.body.planned_end_date).toBeNull();
+    expect(semPrazo.body.deadline_state).toBe('sem_prazo');
+    await ctx.agent.post('/api/tasks').send({ ...baseTask, planned_end_date: '31/12/2026' }).expect(400);
   });
 
   it('não permite alterar a data de criação', async () => {

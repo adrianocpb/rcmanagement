@@ -10,7 +10,6 @@ import {
   optionalInstant,
   optionalNumber,
   optionalText,
-  requiredDate,
   requiredId,
   requiredText,
   sentOnly,
@@ -34,7 +33,7 @@ export const createTaskSchema = z.object({
   ice_impact: iceValue,
   ice_confidence: iceValue,
   ice_ease: iceValue,
-  planned_end_date: requiredDate,
+  planned_end_date: optionalDate, // opcional: sem prazo, a tarefa nunca fica "atrasada"
 });
 
 export const updateTaskSchema = createTaskSchema

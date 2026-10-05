@@ -50,7 +50,7 @@ Todas as tabelas têm PK `id INTEGER AUTOINCREMENT` e `created_at`/`updated_at` 
 | `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, active | `position` = ordem das colunas. Só um `is_default`. |
 | `epics` | name, description, okr (texto), owner_id → users, status, start_date, end_date, active | status ∈ planejado, em_andamento, concluido, cancelado. |
 | `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, status, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
-| `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date, ice_impact?, ice_confidence?, ice_ease?, ice_score, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
+| `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date?, ice_impact?, ice_confidence?, ice_ease?, ice_score, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
 | `task_status_history` | task_id → tasks, from_status_id? (NULL = criação), to_status_id, changed_by → users, changed_at | Base para análises futuras de gargalo e tempo por etapa. |
 
 Índices: em todas as FKs de `tasks` (status, responsável, solicitante, setor, épico, outcome), em

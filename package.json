@@ -14,7 +14,8 @@
     "migrate": "npm run migrate -w server",
     "seed": "npm run seed -w server",
     "test": "npm run test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w client"
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "importar": "npm run importar -w server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.4"
