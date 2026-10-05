@@ -184,3 +184,26 @@ describe('tempo em cada coluna', () => {
     expect(r.map((x) => x.name)).toEqual(['Dev']);
   });
 });
+
+describe('encerra sem entrega (cancelada)', () => {
+  it('nunca fica atrasada', () => {
+    expect(deadlineState({ planned_end_date: '2026-01-01', completed_at: null }, false, '2026-10-02', true)).toBe('cancelada');
+  });
+  it('sai de atrasadas, WIP e Aging e não conta como entrega', () => {
+    const base = { status_name: 'X', status_color: '#000', status_position: 1, counts_in_wip: true, started_at: null, completed_at: null };
+    const m = computeMetrics({
+      tasks: [
+        // aberta e atrasada
+        { ...base, id: 1, status_id: 1, is_completed: false, created_at: '2026-09-01T12:00:00Z', planned_end_date: '2026-09-10' },
+        // cancelada com prazo vencido
+        { ...base, id: 2, status_id: 2, is_completed: false, is_canceled: true, created_at: '2026-09-01T12:00:00Z', planned_end_date: '2026-09-10' },
+      ],
+      from: '2026-09-01', to: '2026-10-02', today: '2026-10-02', now: new Date('2026-10-02T12:00:00Z'),
+    });
+    expect(m.overdue.count).toBe(1);
+    expect(m.wip.count).toBe(1);
+    expect(m.aging.reduce((s, a) => s + a.count, 0)).toBe(1);
+    expect(m.throughput.count).toBe(0);
+    expect(m.created.count).toBe(2); // continua contando como demanda criada
+  });
+});

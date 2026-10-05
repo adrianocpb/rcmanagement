@@ -35,18 +35,22 @@ export type DeadlineState =
   | 'atrasada' // aberta, hoje > prazo
   | 'concluida_no_prazo'
   | 'concluida_com_atraso'
-  | 'concluida'; // concluída sem prazo definido
+  | 'concluida' // concluída sem prazo definido
+  | 'cancelada'; // encerrada sem entrega (status com is_cancel_status)
 
 /**
  * Situação de prazo de uma tarefa.
  * "Concluída" = o status ATUAL é um status de conclusão.
+ * "Cancelada" = o status ATUAL encerra sem entrega: nunca fica atrasada.
  * Comparações por data de calendário no fuso da aplicação.
  */
 export function deadlineState(
   task: { planned_end_date: string | null; completed_at: string | null },
   isCompleted: boolean,
   today: string,
+  isCanceled = false,
 ): DeadlineState {
+  if (isCanceled) return 'cancelada';
   if (isCompleted) {
     if (!task.planned_end_date) return 'concluida';
     const doneDay = task.completed_at ? toLocalDate(task.completed_at) : today;

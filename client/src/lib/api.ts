@@ -53,7 +53,8 @@ export type DeadlineState =
   | 'atrasada'
   | 'concluida_no_prazo'
   | 'concluida_com_atraso'
-  | 'concluida';
+  | 'concluida'
+  | 'cancelada';
 
 export interface User {
   id: number;
@@ -83,6 +84,8 @@ export interface Status {
   is_completion_status: number;
   /** Tarefas abertas neste status contam no WIP. */
   counts_in_wip: number;
+  /** Encerra sem entrega (ex.: Cancelado): fora de atrasos, WIP, Aging e entregas. */
+  is_cancel_status: number;
   active: number;
 }
 export interface Epic {
@@ -162,6 +165,7 @@ export interface Task {
   updated_at: string;
   is_completed: boolean;
   is_overdue: boolean;
+  is_canceled: boolean;
   deadline_state: DeadlineState;
 }
 export interface HistoryEntry {

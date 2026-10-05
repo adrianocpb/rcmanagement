@@ -15,6 +15,8 @@ export interface StatusRow {
   is_start_status: number;
   is_completion_status: number;
   counts_in_wip: number;
+  /** Encerra a tarefa sem entrega (ex.: Cancelado). */
+  is_cancel_status: number;
   active: number;
 }
 
@@ -25,11 +27,19 @@ const schema = z.object({
   is_start_status: bool.default(false),
   is_completion_status: bool.default(false),
   counts_in_wip: bool.default(true),
+  is_cancel_status: bool.default(false),
   active: bool.default(true),
 });
 
 export function getStatus(db: DB, id: number): StatusRow | undefined {
   return db.prepare('SELECT * FROM statuses WHERE id = ?').get(id) as StatusRow | undefined;
+}
+
+/** Um status não pode ao mesmo tempo concluir (entregar) e encerrar sem entrega. */
+function assertFlags(f: { is_completion_status: unknown; is_cancel_status: unknown }) {
+  if (Number(f.is_completion_status) && Number(f.is_cancel_status)) {
+    throw badRequest('Um status não pode ser ao mesmo tempo "Conclusão" e "Encerra sem entrega".');
+  }
 }
 
 export function statusesRouter(db: DB) {
@@ -44,18 +54,19 @@ export function statusesRouter(db: DB) {
 
   r.post('/', requireAdmin, (req, res) => {
     const d = schema.parse(req.body);
+    assertFlags(d);
     const now = nowIso();
     const pos = (db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS p FROM statuses').get() as { p: number }).p;
     const id = db.transaction(() => {
       const info = db
         .prepare(
           `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, counts_in_wip,
-                                 active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                 is_cancel_status, active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           d.name, d.color, pos, +d.is_default, +d.is_start_status, +d.is_completion_status, +d.counts_in_wip,
-          +d.active, now, now,
+          +d.is_cancel_status, +d.active, now, now,
         );
       const newId = Number(info.lastInsertRowid);
       if (d.is_default) ensureSingleDefault(newId);
@@ -86,8 +97,10 @@ export function statusesRouter(db: DB) {
       is_completion_status:
         d.is_completion_status === undefined ? current.is_completion_status : +d.is_completion_status,
       counts_in_wip: d.counts_in_wip === undefined ? current.counts_in_wip : +d.counts_in_wip,
+      is_cancel_status: d.is_cancel_status === undefined ? current.is_cancel_status : +d.is_cancel_status,
       active: d.active === undefined ? current.active : +d.active,
     };
+    assertFlags(next);
     if (!next.active) {
       const inUse = db
         .prepare('SELECT COUNT(*) AS n FROM tasks WHERE status_id = ? AND deleted_at IS NULL')
@@ -100,7 +113,7 @@ export function statusesRouter(db: DB) {
     db.transaction(() => {
       db.prepare(
         `UPDATE statuses SET name = ?, color = ?, is_default = ?, is_start_status = ?, is_completion_status = ?,
-                counts_in_wip = ?, active = ?, updated_at = ? WHERE id = ?`,
+                counts_in_wip = ?, is_cancel_status = ?, active = ?, updated_at = ? WHERE id = ?`,
       ).run(
         next.name,
         next.color,
@@ -108,6 +121,7 @@ export function statusesRouter(db: DB) {
         next.is_start_status,
         next.is_completion_status,
         next.counts_in_wip,
+        next.is_cancel_status,
         next.active,
         nowIso(),
         id,

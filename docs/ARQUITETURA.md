@@ -47,7 +47,7 @@ Todas as tabelas têm PK `id INTEGER AUTOINCREMENT` e `created_at`/`updated_at` 
 | `users` | name, email (único, case-insensitive), password_hash, role (`admin`/`user`), active | Desativar encerra as sessões do usuário. |
 | `sessions` | token (PK), user_id → users, expires_at | Sessão simples por cookie httpOnly. |
 | `sectors` | name (único), active | Lista plana, sem hierarquia. |
-| `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, active | `position` = ordem das colunas. Só um `is_default`. |
+| `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, **is_cancel_status**, active | `position` = ordem das colunas. Só um `is_default`. |
 | `epics` | name, description, okr (texto), owner_id → users, status, start_date, end_date, active | status ∈ planejado, em_andamento, concluido, cancelado. |
 | `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, status, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
 | `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date?, ice_impact?, ice_confidence?, ice_ease?, ice_score, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
@@ -89,6 +89,11 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
 - **Histórico:** criação e toda mudança de status (Kanban, modal ou edição) geram um registro.
 - **Status inicial:** o formulário sugere o status marcado como padrão; o usuário pode escolher outro.
 - **Status:** não é possível desativar um status que ainda tem tarefas, nem o status padrão.
+- **Encerra sem entrega (ex.: Cancelado):** marcação de status (`is_cancel_status`), exclusiva com
+  "Conclusão". Tarefa nesse status é tratada como encerrada sem entrega: nunca fica atrasada
+  (situação "Cancelada"), sai do WIP, do Aging e do filtro "somente atrasadas", não conta no
+  Throughput/Cycle Time/Lead Time, não entra no tempo por coluna e não entra no total do progresso
+  de épicos e outcomes. Continua contando em "Tarefas criadas" e na distribuição por status.
 - **Priorização ICE (tarefas e outcomes):** Impacto, Confiança e Facilidade são opcionais, inteiros de
   1 a 10 (validados na API e por `CHECK` no banco). `ice_score = impacto × confiança × facilidade`
   (1 a 1000) é uma **coluna gerada pelo banco** — nunca é gravada pelo usuário e não fica inconsistente;

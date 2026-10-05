@@ -123,6 +123,7 @@ export const DEADLINE: Record<DeadlineState, { label: string; cls: string } | nu
   concluida_no_prazo: { label: 'No prazo', cls: 'bg-green-50 text-green-700 ring-1 ring-green-600/20' },
   concluida_com_atraso: { label: 'Concluída c/ atraso', cls: 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20' },
   concluida: null,
+  cancelada: { label: 'Cancelada', cls: 'bg-slate-200 text-slate-600' },
 };
 
 export function initials(name: string | null | undefined): string {

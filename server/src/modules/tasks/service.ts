@@ -64,7 +64,7 @@ export type TaskFilters = {
 const BASE_SELECT = `
   SELECT t.*,
          s.name  AS status_name, s.color AS status_color, s.position AS status_position,
-         s.is_completion_status AS is_completed, s.is_start_status AS status_is_start,
+         s.is_completion_status AS is_completed, s.is_cancel_status AS is_canceled, s.is_start_status AS status_is_start,
          sec.name AS sector_name,
          req.name AS requester_name,
          asg.name AS assignee_name,
@@ -85,11 +85,18 @@ export type TaskRow = Record<string, unknown> & {
   started_at: string | null;
   completed_at: string | null;
   is_completed: number;
+  is_canceled?: number;
 };
 
 function decorate(row: TaskRow, today: string) {
-  const state = deadlineState(row, !!row.is_completed, today);
-  return { ...row, is_completed: !!row.is_completed, deadline_state: state, is_overdue: state === 'atrasada' };
+  const state = deadlineState(row, !!row.is_completed, today, !!row.is_canceled);
+  return {
+    ...row,
+    is_completed: !!row.is_completed,
+    is_canceled: !!row.is_canceled,
+    deadline_state: state,
+    is_overdue: state === 'atrasada',
+  };
 }
 
 /** Monta cláusulas WHERE compartilhadas entre lista de tarefas e dashboard. */
@@ -125,7 +132,9 @@ export function buildTaskWhere(f: TaskFilters, today = todayLocal()) {
     }
   }
   if (f.overdue) {
-    where.push('s.is_completion_status = 0 AND t.planned_end_date IS NOT NULL AND t.planned_end_date < ?');
+    where.push(
+      's.is_completion_status = 0 AND s.is_cancel_status = 0 AND t.planned_end_date IS NOT NULL AND t.planned_end_date < ?',
+    );
     params.push(today);
   }
   return { sql: where.join(' AND '), params };

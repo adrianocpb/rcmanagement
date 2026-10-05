@@ -18,12 +18,14 @@ const schema = z.object({
 
 /**
  * Agregados por épico. Progresso geral = tarefas concluídas / total de tarefas do épico
+ * (tarefas em status "encerra sem entrega", como Cancelado, não entram no total)
  * (inclui tarefas ligadas diretamente ao épico e via outcomes).
  */
 const EPIC_SELECT = `
   SELECT e.*, u.name AS owner_name,
          (SELECT COUNT(*) FROM outcomes o WHERE o.epic_id = e.id AND o.active = 1) AS outcomes_count,
-         (SELECT COUNT(*) FROM tasks t WHERE t.epic_id = e.id AND t.deleted_at IS NULL) AS tasks_count,
+         (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
+           WHERE t.epic_id = e.id AND t.deleted_at IS NULL AND s.is_cancel_status = 0) AS tasks_count,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
            WHERE t.epic_id = e.id AND t.deleted_at IS NULL AND s.is_completion_status = 1) AS tasks_done
     FROM epics e LEFT JOIN users u ON u.id = e.owner_id`;

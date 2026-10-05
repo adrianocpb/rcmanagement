@@ -36,7 +36,8 @@ const schema = z.object({
 
 const OUTCOME_SELECT = `
   SELECT o.*, e.name AS epic_name, u.name AS owner_name,
-         (SELECT COUNT(*) FROM tasks t WHERE t.outcome_id = o.id AND t.deleted_at IS NULL) AS tasks_count,
+         (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
+           WHERE t.outcome_id = o.id AND t.deleted_at IS NULL AND s.is_cancel_status = 0) AS tasks_count,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
            WHERE t.outcome_id = o.id AND t.deleted_at IS NULL AND s.is_completion_status = 1) AS tasks_done
     FROM outcomes o

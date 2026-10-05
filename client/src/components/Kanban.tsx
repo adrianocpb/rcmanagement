@@ -185,7 +185,9 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
         <PriorityBadge priority={task.priority} />
         <IceBadge score={task.ice_score} compact />
         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{task.sector_name}</span>
-        {(task.deadline_state === 'atrasada' || task.deadline_state === 'concluida_com_atraso') && (
+        {(task.deadline_state === 'atrasada' ||
+          task.deadline_state === 'concluida_com_atraso' ||
+          task.deadline_state === 'cancelada') && (
           <DeadlineBadge state={task.deadline_state} />
         )}
         {task.planned_end_date && (

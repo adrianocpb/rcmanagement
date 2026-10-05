@@ -285,3 +285,42 @@ describe('data de criação de épicos e outcomes', () => {
     expect(o2.body.created_at).toBe(o.body.created_at);
   });
 });
+
+describe('status "encerra sem entrega"', () => {
+  async function cancelStatus() {
+    const r = await ctx.agent.post('/api/statuses').send({ name: 'Cancelado', is_cancel_status: true, counts_in_wip: false }).expect(201);
+    return r.body.id as number;
+  }
+
+  it('não permite marcar conclusão e encerra sem entrega juntos', async () => {
+    await ctx.agent.post('/api/statuses').send({ name: 'X', is_cancel_status: true, is_completion_status: true }).expect(400);
+    const id = await cancelStatus();
+    await ctx.agent.put(`/api/statuses/${id}`).send({ is_completion_status: true }).expect(400);
+  });
+
+  it('tarefa cancelada sai de atrasadas e do dashboard, e do progresso do épico', async () => {
+    const cancelId = await cancelStatus();
+    const epic = (await ctx.agent.post('/api/epics').send({ name: 'Épico cancel' })).body;
+    const t1 = (await ctx.agent.post('/api/tasks').send({ ...baseTask, epic_id: epic.id, planned_end_date: '2020-01-01' })).body;
+    await ctx.agent.post('/api/tasks').send({ ...baseTask, epic_id: epic.id, status_id: ctx.byName('Concluído') }).expect(201);
+    expect(t1.is_overdue).toBe(true);
+    const before = (await ctx.agent.get('/api/dashboard')).body;
+
+    const moved = (await ctx.agent.patch(`/api/tasks/${t1.id}/status`).send({ status_id: cancelId }).expect(200)).body;
+    expect(moved.is_overdue).toBe(false);
+    expect(moved.is_canceled).toBe(true);
+    expect(moved.deadline_state).toBe('cancelada');
+    expect(moved.completed_at).toBeNull();
+
+    const overdueList = (await ctx.agent.get('/api/tasks?overdue=true')).body as { id: number }[];
+    expect(overdueList.some((t) => t.id === t1.id)).toBe(false);
+
+    const after = (await ctx.agent.get('/api/dashboard')).body;
+    expect(after.overdue.count).toBe(before.overdue.count - 1);
+    expect(after.throughput.count).toBe(before.throughput.count);
+
+    // 1 concluída de 1 válida (a cancelada não entra no total) → 100%
+    const e = (await ctx.agent.get(`/api/epics/${epic.id}`)).body;
+    expect([e.tasks_done, e.tasks_count]).toEqual([1, 1]);
+  });
+});

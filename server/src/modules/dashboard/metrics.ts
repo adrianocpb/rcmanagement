@@ -22,6 +22,8 @@ export interface MetricTask {
   status_color: string;
   status_position: number;
   is_completed: boolean;
+  /** Status atual "encerra sem entrega" (ex.: Cancelado): fora de atrasos, WIP, Aging e entregas. */
+  is_canceled?: boolean;
   /** Status atual marcado como "conta no WIP". */
   counts_in_wip: boolean;
   created_at: string;
@@ -89,7 +91,8 @@ export function computeMetrics({ tasks, from, to, today, now }: MetricsInput) {
 
   const completed = tasks.filter((t) => t.is_completed && t.completed_at && inPeriod(toLocalDate(t.completed_at)));
   const created = tasks.filter((t) => inPeriod(toLocalDate(t.created_at)));
-  const open = tasks.filter((t) => !t.is_completed);
+  // Abertas = nem concluídas nem encerradas sem entrega.
+  const open = tasks.filter((t) => !t.is_completed && !t.is_canceled);
 
   const cycleOf = (t: MetricTask) => daysBetween(t.started_at!, t.completed_at!);
   const leadOf = (t: MetricTask) => daysBetween(t.created_at, t.completed_at!);
@@ -182,6 +185,7 @@ export interface StatusInfo {
   color: string;
   position: number;
   is_completion_status: boolean;
+  is_cancel_status?: boolean;
 }
 
 /**
@@ -192,7 +196,7 @@ export interface StatusInfo {
  *    tarefa naquela coluna). A média é calculada por tarefa.
  *  - Entram as tarefas que SAÍRAM do status dentro do período (última saída, data local).
  *    A passagem em andamento (status atual) não entra — ela ainda não terminou.
- *  - Status de conclusão não são exibidos (o tempo "parado" em Concluído não é trabalho).
+ *  - Status de conclusão e de "encerra sem entrega" não são exibidos (tempo parado não é trabalho).
  */
 export function computeTimeInStatus(
   events: HistoryEvent[],
@@ -229,7 +233,7 @@ export function computeTimeInStatus(
     values.set(v.status_id, arr);
   }
   return statuses
-    .filter((s) => !s.is_completion_status && values.has(s.id))
+    .filter((s) => !s.is_completion_status && !s.is_cancel_status && values.has(s.id))
     .sort((a, b) => a.position - b.position)
     .map((s) => {
       const st = stats(values.get(s.id)!);

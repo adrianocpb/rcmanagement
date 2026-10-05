@@ -47,7 +47,7 @@ export function TasksPage() {
   });
 
   const overdue = tasks?.filter((t) => t.is_overdue).length ?? 0;
-  const inProgress = tasks?.filter((t) => t.started_at && !t.is_completed).length ?? 0;
+  const inProgress = tasks?.filter((t) => t.started_at && !t.is_completed && !t.is_canceled).length ?? 0;
 
   return (
     <div>

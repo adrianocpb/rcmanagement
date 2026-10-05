@@ -154,4 +154,10 @@ ALTER TABLE statuses ADD COLUMN counts_in_wip INTEGER NOT NULL DEFAULT 1;
 UPDATE statuses SET counts_in_wip = 0 WHERE is_default = 1 OR is_completion_status = 1;
 `,
   },
+  {
+    // "Encerra sem entrega" (ex.: Cancelado): a tarefa sai de atrasos, WIP e Aging, mas não conta
+    // como entrega (Throughput, Cycle/Lead Time) nem entra no progresso de épicos/outcomes.
+    id: '004_status_is_cancel',
+    sql: `ALTER TABLE statuses ADD COLUMN is_cancel_status INTEGER NOT NULL DEFAULT 0;`,
+  },
 ];

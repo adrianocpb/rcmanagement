@@ -43,17 +43,19 @@ export function dashboardRouter(db: DB) {
       .prepare(
         `SELECT t.id, t.status_id, t.created_at, t.started_at, t.completed_at, t.planned_end_date,
                 s.name AS status_name, s.color AS status_color, s.position AS status_position,
-                s.is_completion_status AS is_completed, s.counts_in_wip
+                s.is_completion_status AS is_completed, s.is_cancel_status AS is_canceled, s.counts_in_wip
            FROM tasks t JOIN statuses s ON s.id = t.status_id
           WHERE ${sql}`,
       )
-      .all(...params) as (Omit<MetricTask, 'is_completed' | 'counts_in_wip'> & {
+      .all(...params) as (Omit<MetricTask, 'is_completed' | 'is_canceled' | 'counts_in_wip'> & {
       is_completed: number;
+      is_canceled: number;
       counts_in_wip: number;
     })[];
     const tasks: MetricTask[] = rows.map((t) => ({
       ...t,
       is_completed: !!t.is_completed,
+      is_canceled: !!t.is_canceled,
       counts_in_wip: !!t.counts_in_wip,
     }));
 
@@ -69,18 +71,24 @@ export function dashboardRouter(db: DB) {
       .all(...params) as unknown as HistoryEvent[];
     const statuses = db.prepare('SELECT * FROM statuses ORDER BY position').all() as unknown as (Omit<
       StatusInfo,
-      'is_completion_status'
-    > & { is_completion_status: number; counts_in_wip: number; active: number })[];
+      'is_completion_status' | 'is_cancel_status'
+    > & { is_completion_status: number; is_cancel_status: number; counts_in_wip: number; active: number })[];
 
     res.json({
       ...computeMetrics({ tasks, from, to, today, now: new Date() }),
       time_in_status: computeTimeInStatus(
         events,
-        statuses.map((s) => ({ ...s, is_completion_status: !!s.is_completion_status })),
+        statuses.map((s) => ({
+          ...s,
+          is_completion_status: !!s.is_completion_status,
+          is_cancel_status: !!s.is_cancel_status,
+        })),
         from,
         to,
       ),
-      wip_statuses: statuses.filter((s) => s.active && s.counts_in_wip && !s.is_completion_status).map((s) => s.name),
+      wip_statuses: statuses
+        .filter((s) => s.active && s.counts_in_wip && !s.is_completion_status && !s.is_cancel_status)
+        .map((s) => s.name),
     });
   });
 
