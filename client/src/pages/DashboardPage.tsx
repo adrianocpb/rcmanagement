@@ -173,7 +173,13 @@ function DashboardBody({ data }: { data: DashboardData }) {
         <Kpi icon={<Hourglass size={16} />} label="Lead Time médio" value={fmtDays(data.lead_time.avg)} hint={`Mediana ${fmtDays(data.lead_time.median)} · ${data.lead_time.count} tarefas`} />
         <Kpi icon={<CheckCircle2 size={16} />} label="Throughput" value={String(data.throughput.count)} hint={`concluídas · ${data.throughput.per_week.toLocaleString('pt-BR')}/semana`} />
         <Kpi icon={<Inbox size={16} />} label="Tarefas criadas" value={String(data.created.count)} hint="no período" />
-        <Kpi icon={<Layers size={16} />} label="WIP" value={String(data.wip.count)} hint={`não concluídas · ${data.wip.started} iniciadas`} />
+        <Kpi
+          icon={<Layers size={16} />}
+          label="WIP"
+          value={String(data.wip.count)}
+          hint={wipHint(data.wip_statuses)}
+          title={`Tarefas abertas nos status: ${data.wip_statuses.join(', ') || 'nenhum'} (configurável em Administração → Status)`}
+        />
         <Kpi
           icon={<AlertTriangle size={16} />}
           label="Atrasadas"
@@ -231,6 +237,36 @@ function DashboardBody({ data }: { data: DashboardData }) {
           )}
         </ChartCard>
 
+        <ChartCard
+          title="Tempo médio em cada coluna"
+          subtitle="Dias que cada tarefa passou em cada status (somando idas e voltas), para tarefas que saíram do status no período"
+          className="lg:col-span-2"
+        >
+          {data.time_in_status.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(140, data.time_in_status.length * 44)}>
+              <BarChart data={data.time_in_status} layout="vertical" margin={{ top: 0, right: 56, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12, fill: '#334155' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<TimeInStatusTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
+                <Bar
+                  dataKey="avg_days"
+                  name="Tempo médio"
+                  radius={[0, 4, 4, 0]}
+                  maxBarSize={22}
+                  isAnimationActive={false}
+                  label={{ position: 'right', fontSize: 12, fill: '#334155', formatter: (v: unknown) => fmtDays(v as number) }}
+                >
+                  {data.time_in_status.map((s) => (
+                    <Cell key={s.status_id} fill={s.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[140px] items-center justify-center text-sm text-slate-400">Sem movimentações de status no período.</div>
+          )}
+        </ChartCard>
+
         <ChartCard title="Distribuição por status" subtitle="Situação atual das tarefas (com os filtros aplicados)">
           <ResponsiveContainer width="100%" height={Math.max(160, data.status_distribution.length * 40)}>
             <BarChart data={data.status_distribution} layout="vertical" margin={{ top: 0, right: 32, left: 8, bottom: 0 }}>
@@ -263,7 +299,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
         </ChartCard>
       </div>
       <p className="text-xs text-slate-400">
-        Cycle Time, Lead Time, Throughput e Criadas consideram o período selecionado. WIP, Atrasadas, Aging e Distribuição por status
+        Cycle Time, Lead Time, Throughput, Criadas e Tempo em cada coluna consideram o período selecionado. WIP, Atrasadas, Aging e Distribuição por status
         são o retrato atual. Fórmulas detalhadas em docs/ARQUITETURA.md.
       </p>
     </div>
@@ -273,9 +309,51 @@ function DashboardBody({ data }: { data: DashboardData }) {
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const monthLabel = (d: string) => `${MONTHS[Number(d.slice(5, 7)) - 1]}/${d.slice(2, 4)}`;
 
-function Kpi({ icon, label, value, hint, tone }: { icon: ReactNode; label: string; value: string; hint: string; tone?: 'critical' }) {
+function wipHint(statuses: string[]) {
+  if (statuses.length === 0) return 'nenhum status conta no WIP';
+  if (statuses.length === 1) return `abertas em ${statuses[0]}`;
+  return `abertas de ${statuses[0]} a ${statuses[statuses.length - 1]}`;
+}
+
+function TimeInStatusTooltip({ active, payload }: { active?: boolean; payload?: { payload?: DashboardData['time_in_status'][number] }[] }) {
+  const s = active ? payload?.[0]?.payload : undefined;
+  if (!s) return null;
   return (
-    <div className={`card p-3.5 ${tone === 'critical' ? 'border-red-200 bg-red-50/60' : ''}`}>
+    <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg">
+      <div className="mb-1 flex items-center gap-2 font-medium text-slate-900">
+        <span className="size-2 rounded-full" style={{ background: s.color }} />
+        {s.name}
+      </div>
+      <div className="text-slate-600">
+        Média: <b className="text-slate-900">{fmtDays(s.avg_days)}</b>
+      </div>
+      <div className="text-slate-600">
+        Mediana: <b className="text-slate-900">{fmtDays(s.median_days)}</b>
+      </div>
+      <div className="text-slate-600">
+        Tarefas: <b className="text-slate-900">{s.tasks}</b>
+      </div>
+    </div>
+  );
+}
+
+function Kpi({
+  icon,
+  label,
+  value,
+  hint,
+  tone,
+  title,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  hint: string;
+  tone?: 'critical';
+  title?: string;
+}) {
+  return (
+    <div title={title} className={`card p-3.5 ${tone === 'critical' ? 'border-red-200 bg-red-50/60' : ''}`}>
       <div className={`mb-1 flex items-center gap-1.5 text-xs font-medium ${tone === 'critical' ? 'text-red-700' : 'text-slate-500'}`}>
         {icon}
         {label}
@@ -286,9 +364,9 @@ function Kpi({ icon, label, value, hint, tone }: { icon: ReactNode; label: strin
   );
 }
 
-function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+function ChartCard({ title, subtitle, children, className = '' }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
   return (
-    <section className="card p-4">
+    <section className={`card p-4 ${className}`}>
       <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
       {subtitle && <p className="mb-3 text-xs text-slate-500">{subtitle}</p>}
       {children}

@@ -76,10 +76,10 @@ export function seedDemo(db: DB, now = new Date()) {
     statuses[key] = Number(
       db
         .prepare(
-          `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+          `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, counts_in_wip, active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
         )
-        .run(name, color, i + 1, def, start, done, created, created).lastInsertRowid,
+        .run(name, color, i + 1, def, start, done, def || done ? 0 : 1, created, created).lastInsertRowid,
     );
   });
 

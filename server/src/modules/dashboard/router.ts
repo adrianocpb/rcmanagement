@@ -4,7 +4,13 @@ import type { DB } from '../../db/connection.js';
 import { badRequest } from '../../lib/http.js';
 import { addDays, isValidDate, todayLocal } from '../../lib/time.js';
 import { buildTaskWhere } from '../tasks/service.js';
-import { computeMetrics, type MetricTask } from './metrics.js';
+import {
+  computeMetrics,
+  computeTimeInStatus,
+  type HistoryEvent,
+  type MetricTask,
+  type StatusInfo,
+} from './metrics.js';
 
 const qId = z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().int().positive().optional());
 const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(isValidDate).optional());
@@ -38,14 +44,45 @@ export function dashboardRouter(db: DB) {
       .prepare(
         `SELECT t.id, t.status_id, t.created_at, t.started_at, t.completed_at, t.planned_end_date,
                 s.name AS status_name, s.color AS status_color, s.position AS status_position,
-                s.is_completion_status AS is_completed
+                s.is_completion_status AS is_completed, s.counts_in_wip
            FROM tasks t JOIN statuses s ON s.id = t.status_id
           WHERE ${sql}`,
       )
-      .all(...params) as (Omit<MetricTask, 'is_completed'> & { is_completed: number })[];
+      .all(...params) as (Omit<MetricTask, 'is_completed' | 'counts_in_wip'> & {
+      is_completed: number;
+      counts_in_wip: number;
+    })[];
+    const tasks: MetricTask[] = rows.map((t) => ({
+      ...t,
+      is_completed: !!t.is_completed,
+      counts_in_wip: !!t.counts_in_wip,
+    }));
 
-    const tasks: MetricTask[] = rows.map((t) => ({ ...t, is_completed: !!t.is_completed }));
-    res.json(computeMetrics({ tasks, from, to, granularity: q.granularity, today, now: new Date() }));
+    // Histórico de status das mesmas tarefas filtradas, para o tempo em cada coluna.
+    const events = db
+      .prepare(
+        `SELECT h.task_id, h.to_status_id, h.changed_at
+           FROM task_status_history h
+           JOIN tasks t ON t.id = h.task_id
+           JOIN statuses s ON s.id = t.status_id
+          WHERE ${sql}`,
+      )
+      .all(...params) as unknown as HistoryEvent[];
+    const statuses = db.prepare('SELECT * FROM statuses ORDER BY position').all() as unknown as (Omit<
+      StatusInfo,
+      'is_completion_status'
+    > & { is_completion_status: number; counts_in_wip: number; active: number })[];
+
+    res.json({
+      ...computeMetrics({ tasks, from, to, granularity: q.granularity, today, now: new Date() }),
+      time_in_status: computeTimeInStatus(
+        events,
+        statuses.map((s) => ({ ...s, is_completion_status: !!s.is_completion_status })),
+        from,
+        to,
+      ),
+      wip_statuses: statuses.filter((s) => s.active && s.counts_in_wip && !s.is_completion_status).map((s) => s.name),
+    });
   });
 
   return r;

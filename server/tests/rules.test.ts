@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMetrics, stats, type MetricTask } from '../src/modules/dashboard/metrics.js';
+import { computeMetrics, computeTimeInStatus, stats, type MetricTask } from '../src/modules/dashboard/metrics.js';
 import { applyStatusEntry, deadlineState } from '../src/modules/tasks/rules.js';
 import { startOfLocalDayUtc, toLocalDate, zonedWallTimeToUtc } from '../src/lib/time.js';
 
@@ -67,7 +67,7 @@ describe('métricas', () => {
     expect(stats([])).toEqual({ count: 0, avg: null, median: null });
   });
 
-  const base = { status_id: 1, status_name: 'X', status_color: '#000', status_position: 1, planned_end_date: null };
+  const base = { status_id: 1, status_name: 'X', status_color: '#000', status_position: 1, planned_end_date: null, counts_in_wip: true };
   const tasks: MetricTask[] = [
     // concluída no período: lead 10d, cycle 4d
     { ...base, id: 1, is_completed: true, created_at: '2026-09-01T12:00:00Z', started_at: '2026-09-07T12:00:00Z', completed_at: '2026-09-11T12:00:00Z' },
@@ -110,5 +110,62 @@ describe('métricas', () => {
       ['2026-09-01', 3, 2],
       ['2026-10-01', 1, 0],
     ]);
+  });
+});
+
+describe('WIP por status', () => {
+  it('não conta tarefas abertas em status fora do WIP (ex.: Backlog)', () => {
+    const base = { status_name: 'X', status_color: '#000', status_position: 1, planned_end_date: null, created_at: '2026-09-01T12:00:00Z', started_at: null, completed_at: null, is_completed: false };
+    const m = computeMetrics({
+      tasks: [
+        { ...base, id: 1, status_id: 1, counts_in_wip: false },
+        { ...base, id: 2, status_id: 2, counts_in_wip: true },
+        { ...base, id: 3, status_id: 2, counts_in_wip: true },
+      ],
+      from: '2026-09-01', to: '2026-10-02', granularity: 'week', today: '2026-10-02', now: new Date('2026-10-02T12:00:00Z'),
+    });
+    expect(m.wip.count).toBe(2);
+  });
+});
+
+describe('tempo em cada coluna', () => {
+  const statuses = [
+    { id: 1, name: 'Backlog', color: '#000', position: 1, is_completion_status: false },
+    { id: 2, name: 'Dev', color: '#000', position: 2, is_completion_status: false },
+    { id: 3, name: 'Concluído', color: '#000', position: 3, is_completion_status: true },
+  ];
+  const ev = (task_id: number, to_status_id: number, changed_at: string) => ({ task_id, to_status_id, changed_at });
+
+  it('soma passagens repetidas por tarefa, ignora passagem em andamento e status de conclusão', () => {
+    const r = computeTimeInStatus(
+      [
+        // tarefa 1: Backlog 2d → Dev 3d → Backlog 1d → Dev 1d → Concluído
+        ev(1, 1, '2026-09-01T12:00:00Z'),
+        ev(1, 2, '2026-09-03T12:00:00Z'),
+        ev(1, 1, '2026-09-06T12:00:00Z'),
+        ev(1, 2, '2026-09-07T12:00:00Z'),
+        ev(1, 3, '2026-09-08T12:00:00Z'),
+        // tarefa 2: Backlog 4d → Dev (ainda em andamento: não entra em Dev)
+        ev(2, 1, '2026-09-01T12:00:00Z'),
+        ev(2, 2, '2026-09-05T12:00:00Z'),
+      ],
+      statuses,
+      '2026-09-01',
+      '2026-09-30',
+    );
+    expect(r).toEqual([
+      { status_id: 1, name: 'Backlog', color: '#000', tasks: 2, avg_days: 3.5, median_days: 3.5 },
+      { status_id: 2, name: 'Dev', color: '#000', tasks: 1, avg_days: 4, median_days: 4 },
+    ]);
+  });
+
+  it('considera apenas saídas dentro do período', () => {
+    const r = computeTimeInStatus(
+      [ev(1, 1, '2026-08-01T12:00:00Z'), ev(1, 2, '2026-08-05T12:00:00Z'), ev(1, 3, '2026-09-10T12:00:00Z')],
+      statuses,
+      '2026-09-01',
+      '2026-09-30',
+    );
+    expect(r.map((x) => x.name)).toEqual(['Dev']);
   });
 });

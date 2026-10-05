@@ -7,7 +7,7 @@ describe('auditoria de filtros e indicadores', async () => {
   const ctx = await setup();
   const raw = ctx.db
     .prepare(
-      `SELECT t.*, s.is_completion_status AS done FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.deleted_at IS NULL`,
+      `SELECT t.*, s.is_completion_status AS done, s.counts_in_wip AS wip FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.deleted_at IS NULL`,
     )
     .all() as Record<string, any>[];
   const today = todayLocal();
@@ -57,7 +57,7 @@ describe('auditoria de filtros e indicadores', async () => {
       const avg = (v: number[]) => (v.length ? Math.round((v.reduce((s, x) => s + x, 0) / v.length) * 10) / 10 : null);
       expect(d.throughput.count).toBe(done.length);
       expect(d.created.count).toBe(ts.filter((t) => inP(t.created_at)).length);
-      expect(d.wip.count).toBe(ts.filter((t) => !t.done).length);
+      expect(d.wip.count).toBe(ts.filter((t) => !t.done && t.wip).length);
       expect(d.overdue.count).toBe(ts.filter((t) => !t.done && t.planned_end_date && today > t.planned_end_date).length);
       expect(d.cycle_time.avg).toBe(avg(done.filter((t) => t.started_at).map((t) => days(t.started_at, t.completed_at))));
       expect(d.lead_time.avg).toBe(avg(done.map((t) => days(t.created_at, t.completed_at))));

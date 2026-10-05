@@ -14,6 +14,7 @@ export interface StatusRow {
   is_default: number;
   is_start_status: number;
   is_completion_status: number;
+  counts_in_wip: number;
   active: number;
 }
 
@@ -23,6 +24,7 @@ const schema = z.object({
   is_default: bool.default(false),
   is_start_status: bool.default(false),
   is_completion_status: bool.default(false),
+  counts_in_wip: bool.default(true),
   active: bool.default(true),
 });
 
@@ -47,10 +49,14 @@ export function statusesRouter(db: DB) {
     const id = db.transaction(() => {
       const info = db
         .prepare(
-          `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, counts_in_wip,
+                                 active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(d.name, d.color, pos, +d.is_default, +d.is_start_status, +d.is_completion_status, +d.active, now, now);
+        .run(
+          d.name, d.color, pos, +d.is_default, +d.is_start_status, +d.is_completion_status, +d.counts_in_wip,
+          +d.active, now, now,
+        );
       const newId = Number(info.lastInsertRowid);
       if (d.is_default) ensureSingleDefault(newId);
       return newId;
@@ -79,6 +85,7 @@ export function statusesRouter(db: DB) {
       is_start_status: d.is_start_status === undefined ? current.is_start_status : +d.is_start_status,
       is_completion_status:
         d.is_completion_status === undefined ? current.is_completion_status : +d.is_completion_status,
+      counts_in_wip: d.counts_in_wip === undefined ? current.counts_in_wip : +d.counts_in_wip,
       active: d.active === undefined ? current.active : +d.active,
     };
     if (!next.active) {
@@ -93,13 +100,14 @@ export function statusesRouter(db: DB) {
     db.transaction(() => {
       db.prepare(
         `UPDATE statuses SET name = ?, color = ?, is_default = ?, is_start_status = ?, is_completion_status = ?,
-                active = ?, updated_at = ? WHERE id = ?`,
+                counts_in_wip = ?, active = ?, updated_at = ? WHERE id = ?`,
       ).run(
         next.name,
         next.color,
         next.is_default,
         next.is_start_status,
         next.is_completion_status,
+        next.counts_in_wip,
         next.active,
         nowIso(),
         id,

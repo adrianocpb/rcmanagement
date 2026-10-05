@@ -302,6 +302,7 @@ function StatusesTab() {
               {!!s.is_default && <Flag cls="bg-slate-100 text-slate-700">Padrão p/ novas</Flag>}
               {!!s.is_start_status && <Flag cls="bg-blue-50 text-blue-700">Início</Flag>}
               {!!s.is_completion_status && <Flag cls="bg-green-50 text-green-700">Conclusão</Flag>}
+              {!!s.counts_in_wip && !s.is_completion_status && <Flag cls="bg-violet-50 text-violet-700">WIP</Flag>}
             </div>
             <ActiveBadge active={s.active} />
             <button className="btn-ghost p-1" onClick={() => setEditing(s)} title="Editar">
@@ -327,6 +328,7 @@ function StatusModal({ status, onClose }: { status?: Status; onClose: () => void
     is_default: !!status?.is_default,
     is_start_status: !!status?.is_start_status,
     is_completion_status: !!status?.is_completion_status,
+    counts_in_wip: status ? !!status.counts_in_wip : true,
     active: status ? !!status.active : true,
   });
   const save = useMutation({
@@ -336,7 +338,11 @@ function StatusModal({ status, onClose }: { status?: Status; onClose: () => void
       onClose();
     },
   });
-  const check = (k: 'is_default' | 'is_start_status' | 'is_completion_status' | 'active', label: string, hint: string) => (
+  const check = (
+    k: 'is_default' | 'is_start_status' | 'is_completion_status' | 'counts_in_wip' | 'active',
+    label: string,
+    hint: string,
+  ) => (
     <label className="flex items-start gap-2 rounded-md p-1.5 text-sm hover:bg-slate-50">
       <input type="checkbox" className="mt-0.5" checked={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.checked })} />
       <span>
@@ -382,6 +388,7 @@ function StatusModal({ status, onClose }: { status?: Status; onClose: () => void
           {check('is_default', 'Status inicial (padrão para novas tarefas)', 'Apenas um status pode ser o padrão.')}
           {check('is_start_status', 'Marca início do trabalho', 'Ao entrar neste status, a data de início real é preenchida (se vazia).')}
           {check('is_completion_status', 'Marca conclusão', 'Ao entrar neste status, a data de conclusão real é preenchida (se vazia).')}
+          {check('counts_in_wip', 'Conta no WIP', 'Tarefas abertas neste status entram no indicador WIP (ex.: desmarque no Backlog).')}
           {check('active', 'Ativo', 'Status inativos não aparecem no Kanban.')}
         </div>
         <ErrorText error={save.error} />

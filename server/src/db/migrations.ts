@@ -145,4 +145,13 @@ ALTER TABLE outcomes ADD COLUMN ice_ease       INTEGER CHECK (ice_ease BETWEEN 1
 ALTER TABLE outcomes ADD COLUMN ice_score      INTEGER GENERATED ALWAYS AS (ice_impact * ice_confidence * ice_ease) VIRTUAL;
 `,
   },
+  {
+    // WIP configurável por status (sem depender do nome): o Backlog — status padrão de novas
+    // tarefas — e os status de conclusão começam fora do WIP.
+    id: '003_status_counts_in_wip',
+    sql: `
+ALTER TABLE statuses ADD COLUMN counts_in_wip INTEGER NOT NULL DEFAULT 1;
+UPDATE statuses SET counts_in_wip = 0 WHERE is_default = 1 OR is_completion_status = 1;
+`,
+  },
 ];

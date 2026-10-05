@@ -81,6 +81,8 @@ export interface Status {
   is_default: number;
   is_start_status: number;
   is_completion_status: number;
+  /** Tarefas abertas neste status contam no WIP. */
+  counts_in_wip: number;
   active: number;
 }
 export interface Epic {
@@ -188,4 +190,8 @@ export interface DashboardData {
   series: { bucket: string; created: number; completed: number; cycle_avg: number | null; cycle_median: number | null }[];
   status_distribution: { status_id: number; name: string; color: string; position: number; count: number }[];
   aging: { key: string; label: string; count: number }[];
+  /** Tempo médio (dias) por tarefa em cada status, para passagens encerradas no período. */
+  time_in_status: { status_id: number; name: string; color: string; tasks: number; avg_days: number | null; median_days: number | null }[];
+  /** Nomes dos status que contam no WIP. */
+  wip_statuses: string[];
 }

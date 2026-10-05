@@ -8,7 +8,9 @@
  *  - Throughput: nº de tarefas concluídas cujo completed_at (data local) cai no período.
  *  - Criadas: nº de tarefas cujo created_at (data local) cai no período.
  *  - Atrasadas: não concluídas, com prazo, hoje (local) > prazo. Retrato atual (ignora período).
- *  - WIP: nº de tarefas não concluídas. Retrato atual (ignora período).
+ *  - WIP: nº de tarefas não concluídas em status marcados como "conta no WIP" (por padrão, todos
+ *    exceto o Backlog). Retrato atual (ignora período).
+ *  - Tempo em cada coluna: ver computeTimeInStatus.
  *  - Aging: para não concluídas, agora − (started_at ?? created_at), em dias.
  */
 import { addDays, daysBetween, startOfMonth, startOfWeek, toLocalDate } from '../../lib/time.js';
@@ -20,6 +22,8 @@ export interface MetricTask {
   status_color: string;
   status_position: number;
   is_completed: boolean;
+  /** Status atual marcado como "conta no WIP". */
+  counts_in_wip: boolean;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -147,10 +151,79 @@ export function computeMetrics({ tasks, from, to, granularity, today, now }: Met
       per_week: periodDays > 0 ? round((completed.length / periodDays) * 7) : 0,
     },
     created: { count: created.length },
-    wip: { count: open.length, started: open.filter((t) => t.started_at).length },
+    wip: { count: open.filter((t) => t.counts_in_wip).length, started: open.filter((t) => t.started_at).length },
     overdue: { count: overdue.length },
     series,
     status_distribution: [...byStatus.values()].sort((a, b) => a.position - b.position),
     aging,
   };
+}
+
+// ---------------- Tempo médio em cada coluna (status) ----------------
+
+export interface HistoryEvent {
+  task_id: number;
+  to_status_id: number;
+  changed_at: string; // instante UTC
+}
+
+export interface StatusInfo {
+  id: number;
+  name: string;
+  color: string;
+  position: number;
+  is_completion_status: boolean;
+}
+
+/**
+ * Tempo médio que as tarefas passam em cada status, calculado pelo histórico de movimentações.
+ *
+ *  - Uma "passagem" vai da entrada no status até a próxima mudança de status da tarefa.
+ *  - Se a tarefa passou mais de uma vez pelo mesmo status, os tempos são SOMADOS (tempo total da
+ *    tarefa naquela coluna). A média é calculada por tarefa.
+ *  - Entram as tarefas que SAÍRAM do status dentro do período (última saída, data local).
+ *    A passagem em andamento (status atual) não entra — ela ainda não terminou.
+ *  - Status de conclusão não são exibidos (o tempo "parado" em Concluído não é trabalho).
+ */
+export function computeTimeInStatus(
+  events: HistoryEvent[],
+  statuses: StatusInfo[],
+  from: string,
+  to: string,
+) {
+  const byTask = new Map<number, HistoryEvent[]>();
+  for (const e of events) {
+    const list = byTask.get(e.task_id) ?? [];
+    list.push(e);
+    byTask.set(e.task_id, list);
+  }
+  // (tarefa, status) → tempo total e última saída
+  const perTaskStatus = new Map<string, { status_id: number; days: number; lastExit: string }>();
+  for (const list of byTask.values()) {
+    list.sort((a, b) => a.changed_at.localeCompare(b.changed_at));
+    for (let i = 0; i < list.length - 1; i++) {
+      const cur = list[i];
+      const exit = list[i + 1].changed_at;
+      const key = `${cur.task_id}:${cur.to_status_id}`;
+      const acc = perTaskStatus.get(key) ?? { status_id: cur.to_status_id, days: 0, lastExit: exit };
+      acc.days += daysBetween(cur.changed_at, exit);
+      if (exit > acc.lastExit) acc.lastExit = exit;
+      perTaskStatus.set(key, acc);
+    }
+  }
+  const values = new Map<number, number[]>();
+  for (const v of perTaskStatus.values()) {
+    const exitDay = toLocalDate(v.lastExit);
+    if (exitDay < from || exitDay > to) continue;
+    const arr = values.get(v.status_id) ?? [];
+    arr.push(v.days);
+    values.set(v.status_id, arr);
+  }
+  return statuses
+    .filter((s) => !s.is_completion_status && values.has(s.id))
+    .sort((a, b) => a.position - b.position)
+    .map((s) => {
+      const st = stats(values.get(s.id)!);
+      return { status_id: s.id, name: s.name, color: s.color, tasks: st.count, avg_days: st.avg, median_days: st.median };
+    });
 }

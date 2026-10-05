@@ -47,7 +47,7 @@ Todas as tabelas têm PK `id INTEGER AUTOINCREMENT` e `created_at`/`updated_at` 
 | `users` | name, email (único, case-insensitive), password_hash, role (`admin`/`user`), active | Desativar encerra as sessões do usuário. |
 | `sessions` | token (PK), user_id → users, expires_at | Sessão simples por cookie httpOnly. |
 | `sectors` | name (único), active | Lista plana, sem hierarquia. |
-| `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, active | `position` = ordem das colunas. Só um `is_default`. |
+| `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, active | `position` = ordem das colunas. Só um `is_default`. |
 | `epics` | name, description, okr (texto), owner_id → users, status, start_date, end_date, active | status ∈ planejado, em_andamento, concluido, cancelado. |
 | `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, status, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
 | `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date, ice_impact?, ice_confidence?, ice_ease?, ice_score, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
@@ -110,13 +110,14 @@ Período = `[de, até]` em datas locais (fuso da aplicação), inclusivo. Filtro
 | **Throughput** | Nº de tarefas concluídas cujo `completed_at` está no período (como `completed_at` nunca é sobrescrito, equivale à primeira entrada em status de conclusão). Também exibido como média por semana. | Sim |
 | **Tarefas criadas** | Nº de tarefas com `created_at` no período. | Sim |
 | **Atrasadas** | Não concluídas, com prazo, hoje > prazo. | Não (retrato atual) |
-| **WIP** | Nº de tarefas não concluídas (exibe também quantas já foram iniciadas). | Não |
+| **WIP** | Nº de tarefas não concluídas em status marcados como **"Conta no WIP"** (por padrão todos, exceto o Backlog/status padrão e os de conclusão). Configurável em Administração → Status, sem depender do nome. | Não |
+| **Tempo em cada coluna** | Pelo histórico de status: tempo de cada tarefa em cada status (entrada → próxima mudança), somando idas e voltas. Média e mediana por status, considerando tarefas cuja última saída do status ocorreu no período. A permanência atual (ainda no status) e os status de conclusão não entram. | Sim |
 | **Aging** | Para não concluídas: `agora − (started_at ?? created_at)`, em faixas 0–7, 8–15, 16–30, +30 dias. | Não |
 
 Séries temporais: agrupadas por semana (início na segunda-feira) ou mês, pela data local.
 Gráficos: (1) criadas × concluídas por período — o throughput ao longo do tempo é a série
 "Concluídas"; (2) Cycle Time médio por período com a mediana do período como referência;
-(3) distribuição atual por status; (4) aging.
+(3) tempo médio em cada coluna; (4) distribuição atual por status; (5) aging.
 
 ## 7. Datas e fuso horário
 

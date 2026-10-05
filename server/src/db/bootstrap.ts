@@ -20,8 +20,8 @@ export function bootstrap(db: DB) {
   const statuses = db.prepare('SELECT COUNT(*) AS n FROM statuses').get() as { n: number };
   if (statuses.n === 0) {
     const insert = db.prepare(
-      `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO statuses (name, color, position, is_default, is_start_status, is_completion_status, counts_in_wip, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     );
     [
       ['Backlog', '#64748b', 1, 0, 0],
@@ -29,6 +29,6 @@ export function bootstrap(db: DB) {
       ['Em desenvolvimento', '#2563eb', 0, 1, 0],
       ['Em validação', '#d97706', 0, 0, 0],
       ['Concluído', '#16a34a', 0, 0, 1],
-    ].forEach(([name, color, def, start, done], i) => insert.run(name, color, i + 1, def, start, done, now, now));
+    ].forEach(([name, color, def, start, done], i) => insert.run(name, color, i + 1, def, start, done, def || done ? 0 : 1, now, now));
   }
 }

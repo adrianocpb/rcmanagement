@@ -227,3 +227,27 @@ describe('priorização ICE', () => {
       .expect(400);
   });
 });
+
+describe('WIP e tempo em cada coluna (API)', () => {
+  it('Backlog fora do WIP por padrão; marcação editável pelo admin', async () => {
+    const statuses = (await ctx.agent.get('/api/statuses')).body as { name: string; counts_in_wip: number }[];
+    expect(statuses.find((s) => s.name === 'Backlog')!.counts_in_wip).toBe(0);
+    expect(statuses.find((s) => s.name === 'Priorizado')!.counts_in_wip).toBe(1);
+
+    const before = (await ctx.agent.get('/api/dashboard')).body;
+    expect(before.wip_statuses).toEqual(['Priorizado', 'Em desenvolvimento', 'Em validação']);
+    const backlogOpen = ctx.db
+      .prepare(`SELECT COUNT(*) AS n FROM tasks WHERE status_id = ? AND deleted_at IS NULL`)
+      .get(ctx.byName('Backlog')) as { n: number };
+    await ctx.agent.put(`/api/statuses/${ctx.byName('Backlog')}`).send({ counts_in_wip: true }).expect(200);
+    const after = (await ctx.agent.get('/api/dashboard')).body;
+    expect(after.wip.count).toBe(before.wip.count + backlogOpen.n);
+  });
+
+  it('dashboard traz o tempo médio por coluna', async () => {
+    const d = (await ctx.agent.get('/api/dashboard')).body;
+    expect(d.time_in_status.length).toBeGreaterThan(0);
+    expect(d.time_in_status.every((s: { avg_days: number }) => s.avg_days > 0)).toBe(true);
+    expect(d.time_in_status.some((s: { name: string }) => s.name === 'Concluído')).toBe(false);
+  });
+});
