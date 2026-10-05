@@ -251,3 +251,15 @@ describe('WIP e tempo em cada coluna (API)', () => {
     expect(d.time_in_status.some((s: { name: string }) => s.name === 'Concluído')).toBe(false);
   });
 });
+
+describe('agrupamento automático das séries do dashboard', () => {
+  it('semanal até 120 dias e mensal acima disso', async () => {
+    const short = (await ctx.agent.get('/api/dashboard?from=2026-07-01&to=2026-09-30').expect(200)).body;
+    expect(short.period.granularity).toBe('week');
+    const long = (await ctx.agent.get('/api/dashboard?from=2026-04-01&to=2026-09-30').expect(200)).body;
+    expect(long.period.granularity).toBe('month');
+    expect(long.series.map((s: { bucket: string }) => s.bucket)).toEqual([
+      '2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01',
+    ]);
+  });
+});

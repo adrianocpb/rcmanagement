@@ -114,7 +114,8 @@ Período = `[de, até]` em datas locais (fuso da aplicação), inclusivo. Filtro
 | **Tempo em cada coluna** | Pelo histórico de status: tempo de cada tarefa em cada status (entrada → próxima mudança), somando idas e voltas. Média e mediana por status, considerando tarefas cuja última saída do status ocorreu no período. A permanência atual (ainda no status) e os status de conclusão não entram. | Sim |
 | **Aging** | Para não concluídas: `agora − (started_at ?? created_at)`, em faixas 0–7, 8–15, 16–30, +30 dias. | Não |
 
-Séries temporais: agrupadas por semana (início na segunda-feira) ou mês, pela data local.
+Séries temporais: agrupamento automático pelo tamanho do período — até 120 dias por semana (início na
+segunda-feira), acima disso por mês — pela data local. Não há seletor manual.
 Gráficos: (1) criadas × concluídas por período — o throughput ao longo do tempo é a série
 "Concluídas"; (2) Cycle Time médio por período com a mediana do período como referência;
 (3) tempo médio em cada coluna; (4) distribuição atual por status; (5) aging.

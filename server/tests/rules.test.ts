@@ -84,7 +84,6 @@ describe('métricas', () => {
     tasks,
     from: '2026-09-01',
     to: '2026-10-02',
-    granularity: 'month',
     today: '2026-10-02',
     now: new Date('2026-10-02T12:00:00Z'),
   });
@@ -105,8 +104,24 @@ describe('métricas', () => {
   it('aging usa início real ou criação', () => {
     expect(m.aging.map((a) => a.count)).toEqual([1, 0, 1, 0]);
   });
-  it('séries por mês', () => {
+  it('séries agrupadas por semana em períodos de até 120 dias (semana começa na segunda)', () => {
+    expect(m.period.granularity).toBe('week');
     expect(m.series.map((s) => [s.bucket, s.created, s.completed])).toEqual([
+      ['2026-08-31', 3, 0],
+      ['2026-09-07', 0, 2],
+      ['2026-09-14', 0, 0],
+      ['2026-09-21', 0, 0],
+      ['2026-09-28', 1, 0],
+    ]);
+  });
+  it('séries agrupadas por mês automaticamente em períodos longos', () => {
+    const long = computeMetrics({ tasks, from: '2026-05-01', to: '2026-10-02', today: '2026-10-02', now: new Date('2026-10-02T12:00:00Z') });
+    expect(long.period.granularity).toBe('month');
+    expect(long.series.map((s) => [s.bucket, s.created, s.completed])).toEqual([
+      ['2026-05-01', 0, 0],
+      ['2026-06-01', 1, 1],
+      ['2026-07-01', 0, 0],
+      ['2026-08-01', 0, 0],
       ['2026-09-01', 3, 2],
       ['2026-10-01', 1, 0],
     ]);
@@ -122,7 +137,7 @@ describe('WIP por status', () => {
         { ...base, id: 2, status_id: 2, counts_in_wip: true },
         { ...base, id: 3, status_id: 2, counts_in_wip: true },
       ],
-      from: '2026-09-01', to: '2026-10-02', granularity: 'week', today: '2026-10-02', now: new Date('2026-10-02T12:00:00Z'),
+      from: '2026-09-01', to: '2026-10-02', today: '2026-10-02', now: new Date('2026-10-02T12:00:00Z'),
     });
     expect(m.wip.count).toBe(2);
   });

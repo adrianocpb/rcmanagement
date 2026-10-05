@@ -32,11 +32,19 @@ export interface MetricTask {
 
 export type Granularity = 'week' | 'month';
 
+/** Períodos acima deste tamanho são agrupados por mês nos gráficos de evolução; até ele, por semana. */
+export const WEEKLY_MAX_DAYS = 120;
+
+/** Agrupamento automático das séries temporais, pelo tamanho do período. */
+export function autoGranularity(from: string, to: string): Granularity {
+  const days = daysBetween(`${from}T00:00:00Z`, `${addDays(to, 1)}T00:00:00Z`);
+  return days > WEEKLY_MAX_DAYS ? 'month' : 'week';
+}
+
 export interface MetricsInput {
   tasks: MetricTask[];
   from: string; // YYYY-MM-DD (inclusive, fuso da aplicação)
   to: string; // YYYY-MM-DD (inclusive)
-  granularity: Granularity;
   today: string; // YYYY-MM-DD no fuso da aplicação
   now: Date;
 }
@@ -75,7 +83,8 @@ function nextBucket(start: string, g: Granularity): string {
   return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
 }
 
-export function computeMetrics({ tasks, from, to, granularity, today, now }: MetricsInput) {
+export function computeMetrics({ tasks, from, to, today, now }: MetricsInput) {
+  const granularity = autoGranularity(from, to);
   const inPeriod = (localDate: string) => localDate >= from && localDate <= to;
 
   const completed = tasks.filter((t) => t.is_completed && t.completed_at && inPeriod(toLocalDate(t.completed_at)));

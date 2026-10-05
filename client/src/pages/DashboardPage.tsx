@@ -55,14 +55,13 @@ function presetRange(p: Preset): { from: string; to: string } {
 export function DashboardPage() {
   const [preset, setPreset] = useState<Preset>('90');
   const [range, setRange] = useState(presetRange('90'));
-  const [granularity, setGranularity] = useState<'week' | 'month'>('week');
   const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '' });
   const { data: users } = useUserOptions();
   const { data: sectors } = useSectors();
   const { data: epics } = useEpics();
   const { data: outcomes } = useOutcomes();
 
-  const params = { ...range, granularity, ...dims };
+  const params = { ...range, ...dims };
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', params],
     queryFn: () => api.get<DashboardData>(`/dashboard${qs(params)}`),
@@ -72,7 +71,6 @@ export function DashboardPage() {
   const onPreset = (p: Preset) => {
     setPreset(p);
     if (p !== 'custom') setRange(presetRange(p));
-    if (p === 'week') setGranularity('week');
   };
   const sel = 'input w-auto py-1 text-[13px]';
   const setDim = (k: keyof typeof dims) => (e: { target: { value: string } }) => setDims((d) => ({ ...d, [k]: e.target.value }));
@@ -95,17 +93,6 @@ export function DashboardPage() {
             <input type="date" className={sel} value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} aria-label="Até" />
           </>
         )}
-        <div className="inline-flex rounded-md border border-slate-300 p-0.5">
-          {(['week', 'month'] as const).map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={`rounded px-2.5 py-0.5 text-[13px] font-medium ${granularity === g ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              {g === 'week' ? 'Semanal' : 'Mensal'}
-            </button>
-          ))}
-        </div>
         <span className="mx-1 h-5 w-px bg-slate-200" />
         <select className={sel} value={dims.assignee_id} onChange={setDim('assignee_id')} aria-label="Responsável">
           <option value="">Responsável: todos</option>

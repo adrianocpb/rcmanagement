@@ -18,7 +18,6 @@ const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(
 const querySchema = z.object({
   from: qDate,
   to: qDate,
-  granularity: z.enum(['week', 'month']).default('week'),
   assignee_id: qId,
   sector_id: qId,
   epic_id: qId,
@@ -74,7 +73,7 @@ export function dashboardRouter(db: DB) {
     > & { is_completion_status: number; counts_in_wip: number; active: number })[];
 
     res.json({
-      ...computeMetrics({ tasks, from, to, granularity: q.granularity, today, now: new Date() }),
+      ...computeMetrics({ tasks, from, to, today, now: new Date() }),
       time_in_status: computeTimeInStatus(
         events,
         statuses.map((s) => ({ ...s, is_completion_status: !!s.is_completion_status })),
