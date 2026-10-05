@@ -7,9 +7,9 @@ import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
 import { EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner } from '../components/ui';
 import { api, type Outcome, type Task } from '../lib/api';
-import { PLAN_STATUS, fmtDate, fmtNumber } from '../lib/format';
+import { PLAN_STATUS, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
 import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
-import { Info, PlanStatusBadge, pct } from './EpicsPage';
+import { Info, PlanStatusBadge, pct, sortByCreatedDesc } from './EpicsPage';
 
 /** Progresso do indicador de negócio: quanto do caminho baseline → meta já foi percorrido. */
 export function indicatorProgress(o: Outcome): number | null {
@@ -69,7 +69,7 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
         <PlanStatusBadge status={o.status} />
       </div>
       <div className="mb-3 ml-6 text-xs text-slate-500">
-        {o.epic_name} · {o.owner_name ?? 'Sem responsável'}
+        {o.epic_name} · {o.owner_name ?? 'Sem responsável'} · Criado em {fmtDateOfInstant(o.created_at)}
       </div>
       <IndicatorStrip outcome={o} />
       <div className="mt-3 flex gap-4 border-t border-slate-100 pt-2 text-xs text-slate-500">
@@ -93,8 +93,9 @@ export function OutcomesPage() {
   const { data: epics } = useEpics();
   const [epicFilter, setEpicFilter] = useState('');
   const [creating, setCreating] = useState(false);
-  const [sortKey, setSortKey] = useState<IceSortKey | ''>('');
-  const list = sortByIce(outcomes?.filter((o) => !epicFilter || String(o.epic_id) === epicFilter) ?? [], sortKey);
+  const [sortKey, setSortKey] = useState<IceSortKey | 'created_at' | ''>('');
+  const filtered = outcomes?.filter((o) => !epicFilter || String(o.epic_id) === epicFilter) ?? [];
+  const list = sortKey === 'created_at' ? sortByCreatedDesc(filtered) : sortByIce(filtered, sortKey);
 
   return (
     <div>
@@ -106,10 +107,11 @@ export function OutcomesPage() {
             <select
               className="input w-auto py-1"
               value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as IceSortKey | '')}
+              onChange={(e) => setSortKey(e.target.value as IceSortKey | 'created_at' | '')}
               aria-label="Ordenar outcomes"
             >
               <option value="">Ordenar: épico e nome</option>
+              <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
               {ICE_SORT_OPTIONS.map((opt) => (
                 <option key={opt.key} value={opt.key}>
                   Ordenar: {opt.label} (maior primeiro)
@@ -184,8 +186,9 @@ export function OutcomeDetailPage() {
               <Pencil size={14} /> Editar
             </button>
           </div>
-          <div className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
             <Info label="Responsável" value={o.owner_name ?? '—'} />
+            <Info label="Criado em" value={fmtDateOfInstant(o.created_at)} />
             <Info label="Período" value={`${fmtDate(o.start_date)} → ${fmtDate(o.target_date)}`} />
             <div>
               <div className="text-xs text-slate-500">

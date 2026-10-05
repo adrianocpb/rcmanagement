@@ -4,9 +4,14 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, EmptyState } from '../components/ui';
 import { api, type Epic, type PlanStatus } from '../lib/api';
-import { PLAN_STATUS, fmtDate } from '../lib/format';
+import { PLAN_STATUS, fmtDate, fmtDateOfInstant } from '../lib/format';
 import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
 import { OutcomeCard, OutcomeFormModal } from './OutcomesPage';
+
+/** Ordena pela data de criação, do mais recente para o mais antigo. */
+export function sortByCreatedDesc<T extends { created_at: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
 
 export const pct = (done: number, total: number) => (total ? Math.round((done / total) * 100) : 0);
 
@@ -17,7 +22,9 @@ export function PlanStatusBadge({ status }: { status: PlanStatus }) {
 
 export function EpicsPage() {
   const [showInactive, setShowInactive] = useState(false);
-  const { data: epics, isLoading, error } = useEpics(showInactive);
+  const { data: allEpics, isLoading, error } = useEpics(showInactive);
+  const [sortKey, setSortKey] = useState<'' | 'created_at'>('');
+  const epics = allEpics && sortKey === 'created_at' ? sortByCreatedDesc(allEpics) : allEpics;
   const [editing, setEditing] = useState<Epic | 'new' | null>(null);
 
   return (
@@ -27,6 +34,15 @@ export function EpicsPage() {
         subtitle="Nível estratégico: cada épico agrupa outcomes e se conecta a um objetivo/OKR."
         actions={
           <>
+            <select
+              className="input w-auto py-1"
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as '' | 'created_at')}
+              aria-label="Ordenar épicos"
+            >
+              <option value="">Ordenar: nome</option>
+              <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
+            </select>
             <label
               className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
             >
@@ -62,7 +78,9 @@ export function EpicsPage() {
               <span>
                 <b className="text-slate-700">{e.tasks_done}</b>/{e.tasks_count} tarefas concluídas
               </span>
-              <span className="ml-auto">{e.owner_name ?? 'Sem responsável'}</span>
+              <span className="ml-auto">
+                {e.owner_name ?? 'Sem responsável'} · Criado em {fmtDateOfInstant(e.created_at)}
+              </span>
             </div>
           </Link>
         ))}
@@ -104,8 +122,9 @@ export function EpicDetailPage() {
             <Pencil size={14} /> Editar
           </button>
         </div>
-        <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+        <div className="mt-4 grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-5">
           <Info label="Responsável" value={epic.owner_name ?? '—'} />
+          <Info label="Criado em" value={fmtDateOfInstant(epic.created_at)} />
           <Info label="Período" value={`${fmtDate(epic.start_date)} → ${fmtDate(epic.end_date)}`} />
           <Info label="Outcomes / tarefas" value={`${epic.outcomes_count} / ${epic.tasks_count}`} />
           <div>

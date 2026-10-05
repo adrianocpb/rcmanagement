@@ -36,6 +36,11 @@ export function fmtDateTime(iso: string | null | undefined): string {
   }).format(new Date(iso));
 }
 
+/** Instante UTC → somente a data (dd/mm/aaaa) no fuso da aplicação. */
+export function fmtDateOfInstant(iso: string | null | undefined): string {
+  return iso ? fmtDateTime(iso).slice(0, 10) : '—';
+}
+
 function zonedParts(date: Date) {
   const p: Record<string, string> = {};
   for (const x of new Intl.DateTimeFormat('en-CA', {

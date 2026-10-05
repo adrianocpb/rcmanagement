@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Task } from '../lib/api';
-import { PRIORITY, fmtDate, fmtDateTime, fmtNumber } from '../lib/format';
+import { PRIORITY, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
 import { IceBadge } from './Ice';
 import { useTaskModal } from './TaskModal';
 import { DeadlineBadge, EmptyState, PriorityBadge, StatusPill } from './ui';
@@ -24,6 +24,13 @@ const COLUMNS: Col[] = [
   { key: 'requester', label: 'Solicitante', sort: (t) => t.requester_name, render: (t) => t.requester_name },
   { key: 'assignee', label: 'Responsável', sort: (t) => t.assignee_name, render: (t) => t.assignee_name },
   { key: 'outcome', label: 'Outcome', sort: (t) => t.outcome_name, render: (t) => <span className="text-slate-600">{t.outcome_name ?? '—'}</span>, className: 'min-w-44' },
+  {
+    key: 'created',
+    label: 'Criada em',
+    sort: (t) => t.created_at,
+    render: (t) => fmtDateOfInstant(t.created_at),
+    defaultDir: -1,
+  },
   { key: 'planned_start', label: 'Início prev.', sort: (t) => t.planned_start_date, render: (t) => fmtDate(t.planned_start_date) },
   {
     key: 'planned_end',
@@ -31,7 +38,7 @@ const COLUMNS: Col[] = [
     sort: (t) => t.planned_end_date,
     render: (t) => <span className={t.is_overdue ? 'font-semibold text-red-600' : ''}>{fmtDate(t.planned_end_date)}</span>,
   },
-  { key: 'completed', label: 'Conclusão real', sort: (t) => t.completed_at, render: (t) => (t.completed_at ? fmtDateTime(t.completed_at).slice(0, 10) : '—') },
+  { key: 'completed', label: 'Conclusão real', sort: (t) => t.completed_at, render: (t) => fmtDateOfInstant(t.completed_at) },
   { key: 'hours', label: 'Estim. (h)', sort: (t) => t.estimated_hours, render: (t) => fmtNumber(t.estimated_hours) },
   { key: 'ice_impact', label: 'Impacto', sort: (t) => t.ice_impact, render: (t) => t.ice_impact ?? '—', defaultDir: -1 },
   { key: 'ice_confidence', label: 'Confiança', sort: (t) => t.ice_confidence, render: (t) => t.ice_confidence ?? '—', defaultDir: -1 },

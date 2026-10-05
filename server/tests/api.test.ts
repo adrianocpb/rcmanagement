@@ -263,3 +263,21 @@ describe('agrupamento automático das séries do dashboard', () => {
     ]);
   });
 });
+
+describe('data de criação de épicos e outcomes', () => {
+  it('é preenchida automaticamente e não muda ao editar', async () => {
+    const e = await ctx.agent.post('/api/epics').send({ name: 'Épico data', created_at: '2020-01-01T00:00:00Z' }).expect(201);
+    expect(e.body.created_at).toMatch(/Z$/);
+    expect(e.body.created_at.startsWith('2020')).toBe(false);
+    const e2 = await ctx.agent.put(`/api/epics/${e.body.id}`).send({ name: 'Épico data 2', created_at: '2020-01-01T00:00:00Z' }).expect(200);
+    expect(e2.body.created_at).toBe(e.body.created_at);
+
+    const o = await ctx.agent.post('/api/outcomes').send({ name: 'Outcome data', epic_id: e.body.id }).expect(201);
+    expect(o.body.created_at).toMatch(/Z$/);
+    const o2 = await ctx.agent
+      .put(`/api/outcomes/${o.body.id}`)
+      .send({ name: 'Outcome data 2', epic_id: e.body.id, created_at: '2020-01-01T00:00:00Z' })
+      .expect(200);
+    expect(o2.body.created_at).toBe(o.body.created_at);
+  });
+});

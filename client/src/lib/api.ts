@@ -99,6 +99,8 @@ export interface Epic {
   outcomes_count: number;
   tasks_count: number;
   tasks_done: number;
+  /** Data de criação (instante UTC), preenchida automaticamente. */
+  created_at: string;
 }
 export interface Outcome {
   id: number;
@@ -124,6 +126,8 @@ export interface Outcome {
   active: number;
   tasks_count: number;
   tasks_done: number;
+  /** Data de criação (instante UTC), preenchida automaticamente. */
+  created_at: string;
 }
 export interface Task {
   id: number;
