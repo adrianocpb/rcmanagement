@@ -23,7 +23,10 @@ Detalhes de arquitetura, modelo de dados, regras e fórmulas: **[docs/ARQUITETUR
 
 ## Como rodar localmente
 
-Requisitos: **Node.js 20+**.
+Requisitos: **Node.js 22.13+** (recomendado: versão LTS atual). Nada mais: o banco usa o SQLite
+embutido no Node, então o `npm install` não precisa compilar nada (nem Python, nem Visual Studio).
+
+No Windows, use o **Prompt de Comando (cmd)** — o PowerShell pode bloquear o `npm`.
 
 ```bash
 npm install        # instala server e client (workspaces)

@@ -5,7 +5,7 @@
 | Camada | Tecnologia | Por quê |
 |---|---|---|
 | Backend | **Node.js + Express 5 + TypeScript** | Simples, conhecido, sem framework pesado. |
-| Banco | **SQLite** (`better-sqlite3`) | Arquivo único, zero infraestrutura, backup = copiar o arquivo. Suficiente para uma equipe interna. Trocar por PostgreSQL no futuro exige apenas adaptar a camada de acesso (SQL padrão). |
+| Banco | **SQLite** embutido no Node (`node:sqlite`) | Arquivo único, zero infraestrutura, backup = copiar o arquivo. Sem dependência nativa: instala em qualquer máquina sem compilar. Suficiente para uma equipe interna. Trocar por PostgreSQL no futuro exige apenas adaptar a camada de acesso (SQL padrão). |
 | Validação | **Zod** | Validação declarativa de entrada em um só lugar. |
 | Frontend | **React 19 + Vite + TypeScript + Tailwind CSS 4** | Interface moderna, build rápido, sem CSS customizado complexo. |
 | Dados no front | **TanStack Query** | Cache, recarregamento e atualização otimista (Kanban) com pouco código. |

@@ -33,11 +33,12 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     });
   }
   if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
-  const sqliteErr = err as { code?: string; message?: string };
-  if (sqliteErr?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+  // Erros do SQLite (node:sqlite): a mensagem traz o tipo da restrição violada.
+  const message = (err as { message?: string })?.message ?? '';
+  if (message.includes('UNIQUE constraint failed')) {
     return res.status(409).json({ error: 'Já existe um registro com esse valor.' });
   }
-  if (sqliteErr?.code?.startsWith('SQLITE_CONSTRAINT')) {
+  if (/(FOREIGN KEY|CHECK|NOT NULL) constraint failed/.test(message)) {
     return res.status(400).json({ error: 'Referência inválida ou restrição violada.' });
   }
   console.error(err);
