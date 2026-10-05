@@ -178,3 +178,52 @@ describe('épicos, outcomes e dashboard', () => {
     expect(filtered.body.wip.count).toBeLessThan(res.body.wip.count);
   });
 });
+
+describe('priorização ICE', () => {
+  it('calcula o ICE score da tarefa automaticamente (impacto × confiança × facilidade)', async () => {
+    const { body } = await ctx.agent
+      .post('/api/tasks')
+      .send({ ...baseTask, ice_impact: 8, ice_confidence: 5, ice_ease: 3 })
+      .expect(201);
+    expect(body.ice_score).toBe(120);
+    const upd = await ctx.agent.put(`/api/tasks/${body.id}`).send({ ice_ease: 10 }).expect(200);
+    expect(upd.body.ice_score).toBe(400);
+    // Mover a tarefa não apaga a estimativa
+    const moved = await ctx.agent.patch(`/api/tasks/${body.id}/status`).send({ status_id: ctx.byName('Priorizado') });
+    expect(moved.body.ice_score).toBe(400);
+  });
+
+  it('ICE score fica vazio enquanto faltar algum fator', async () => {
+    const { body } = await ctx.agent.post('/api/tasks').send({ ...baseTask, ice_impact: 8 }).expect(201);
+    expect(body.ice_score).toBeNull();
+    const cleared = await ctx.agent.put(`/api/tasks/${body.id}`).send({ ice_impact: '' }).expect(200);
+    expect(cleared.body.ice_impact).toBeNull();
+  });
+
+  it('aceita apenas inteiros de 1 a 10', async () => {
+    for (const v of [0, 11, 2.5, 'abc']) {
+      await ctx.agent.post('/api/tasks').send({ ...baseTask, ice_impact: v }).expect(400);
+    }
+  });
+
+  it('ignora ice_score enviado pelo cliente', async () => {
+    const { body } = await ctx.agent
+      .post('/api/tasks')
+      .send({ ...baseTask, ice_impact: 2, ice_confidence: 2, ice_ease: 2, ice_score: 999 })
+      .expect(201);
+    expect(body.ice_score).toBe(8);
+  });
+
+  it('calcula o ICE score do outcome', async () => {
+    const epic = (await ctx.agent.get('/api/epics')).body[0];
+    const o = await ctx.agent
+      .post('/api/outcomes')
+      .send({ name: 'Outcome ICE', epic_id: epic.id, ice_impact: 10, ice_confidence: 9, ice_ease: 8 })
+      .expect(201);
+    expect(o.body.ice_score).toBe(720);
+    await ctx.agent
+      .post('/api/outcomes')
+      .send({ name: 'Outcome inválido', epic_id: epic.id, ice_impact: 11 })
+      .expect(400);
+  });
+});

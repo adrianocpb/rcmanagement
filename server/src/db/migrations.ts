@@ -129,4 +129,20 @@ CREATE INDEX idx_history_task      ON task_status_history(task_id, changed_at);
 CREATE INDEX idx_history_to_status ON task_status_history(to_status_id, changed_at);
 `,
   },
+  {
+    // Priorização ICE: Impacto, Confiança e Facilidade (1–10). O ICE score é calculado pelo próprio
+    // banco (coluna gerada = impacto × confiança × facilidade) e fica nulo enquanto faltar algum fator.
+    id: '002_ice_score',
+    sql: `
+ALTER TABLE tasks ADD COLUMN ice_impact     INTEGER CHECK (ice_impact BETWEEN 1 AND 10);
+ALTER TABLE tasks ADD COLUMN ice_confidence INTEGER CHECK (ice_confidence BETWEEN 1 AND 10);
+ALTER TABLE tasks ADD COLUMN ice_ease       INTEGER CHECK (ice_ease BETWEEN 1 AND 10);
+ALTER TABLE tasks ADD COLUMN ice_score      INTEGER GENERATED ALWAYS AS (ice_impact * ice_confidence * ice_ease) VIRTUAL;
+
+ALTER TABLE outcomes ADD COLUMN ice_impact     INTEGER CHECK (ice_impact BETWEEN 1 AND 10);
+ALTER TABLE outcomes ADD COLUMN ice_confidence INTEGER CHECK (ice_confidence BETWEEN 1 AND 10);
+ALTER TABLE outcomes ADD COLUMN ice_ease       INTEGER CHECK (ice_ease BETWEEN 1 AND 10);
+ALTER TABLE outcomes ADD COLUMN ice_score      INTEGER GENERATED ALWAYS AS (ice_impact * ice_confidence * ice_ease) VIRTUAL;
+`,
+  },
 ];

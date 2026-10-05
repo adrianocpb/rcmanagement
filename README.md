@@ -12,6 +12,8 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
 - **Regras automáticas**: data de criação, início real e conclusão real preenchidos pelas mudanças
   de status (baseadas em flags configuráveis, não no nome), indicação de atraso e histórico completo.
 - **Épicos** (ligados a um OKR) e **Outcomes** com indicador de negócio (baseline → atual → meta).
+- **Priorização ICE** em tarefas e outcomes: Impacto, Confiança e Facilidade (1–10) e ICE score
+  calculado automaticamente (impacto × confiança × facilidade), com ordenação por qualquer um deles.
 - **Dashboard**: Cycle Time, Lead Time, Throughput, tarefas criadas, WIP, atrasadas e Aging, com
   filtros por período, responsável, setor, épico e outcome.
 - **Administração**: usuários, setores e status (ordem, cor, padrão, início, conclusão, ativo).

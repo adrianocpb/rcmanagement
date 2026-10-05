@@ -6,6 +6,7 @@ import { nowIso } from '../lib/time.js';
 import {
   PLAN_STATUSES,
   bool,
+  iceValue,
   optionalDate,
   optionalId,
   optionalNumber,
@@ -27,6 +28,9 @@ const schema = z.object({
   baseline_value: optionalNumber,
   target_value: optionalNumber,
   current_value: optionalNumber,
+  ice_impact: iceValue,
+  ice_confidence: iceValue,
+  ice_ease: iceValue,
   active: bool.default(true),
 });
 
@@ -74,12 +78,14 @@ export function outcomesRouter(db: DB) {
     const info = db
       .prepare(
         `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
-                               indicator_unit, baseline_value, target_value, current_value, active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                               indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
+                               ice_ease, active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
-        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, +d.active, now, now,
+        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
+        d.ice_ease, +d.active, now, now,
       );
     res.status(201).json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid));
   });
@@ -93,11 +99,13 @@ export function outcomesRouter(db: DB) {
       db.prepare(
         `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status = ?, start_date = ?,
                              target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
-                             target_value = ?, current_value = ?, active = ?, updated_at = ?
+                             target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
+                             active = ?, updated_at = ?
           WHERE id = ?`,
       ).run(
         d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
-        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, +d.active, nowIso(), id,
+        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
+        d.ice_ease, +d.active, nowIso(), id,
       );
       // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
       db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);

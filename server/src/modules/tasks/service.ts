@@ -4,6 +4,7 @@ import { badRequest, notFound } from '../../lib/http.js';
 import { addDays, nowIso, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
 import {
   PRIORITIES,
+  iceValue,
   optionalDate,
   optionalId,
   optionalInstant,
@@ -30,6 +31,9 @@ export const createTaskSchema = z.object({
   priority: z.preprocess((v) => (v === '' || v == null ? undefined : v), z.enum(PRIORITIES).default('media')),
   estimated_hours: optionalNumber.refine((v) => v === null || v >= 0, 'não pode ser negativo'),
   planned_start_date: optionalDate,
+  ice_impact: iceValue,
+  ice_confidence: iceValue,
+  ice_ease: iceValue,
   planned_end_date: requiredDate,
 });
 
@@ -210,8 +214,9 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
       .prepare(
         `INSERT INTO tasks (title, description, notes, sector_id, requester_id, assignee_id, epic_id, outcome_id,
                             status_id, priority, estimated_hours, planned_start_date, planned_end_date,
+                            ice_impact, ice_confidence, ice_ease,
                             started_at, completed_at, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         d.title,
@@ -227,6 +232,9 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
         d.estimated_hours,
         d.planned_start_date,
         d.planned_end_date,
+        d.ice_impact,
+        d.ice_confidence,
+        d.ice_ease,
         dates.started_at,
         dates.completed_at,
         userId,
@@ -285,14 +293,17 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
 
   const text = (k: 'description' | 'notes') =>
     Object.prototype.hasOwnProperty.call(d, k) ? (d[k] ?? null) : current[k];
-  const nullable = (k: 'estimated_hours' | 'planned_start_date' | 'planned_end_date') =>
+  const nullable = (
+    k: 'estimated_hours' | 'planned_start_date' | 'planned_end_date' | 'ice_impact' | 'ice_confidence' | 'ice_ease',
+  ) =>
     Object.prototype.hasOwnProperty.call(d, k) ? (d[k] ?? null) : current[k];
 
   db.transaction(() => {
     db.prepare(
       `UPDATE tasks SET title = ?, description = ?, notes = ?, sector_id = ?, requester_id = ?, assignee_id = ?,
                         epic_id = ?, outcome_id = ?, status_id = ?, priority = ?, estimated_hours = ?,
-                        planned_start_date = ?, planned_end_date = ?, started_at = ?, completed_at = ?, updated_at = ?
+                        planned_start_date = ?, planned_end_date = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
+                        started_at = ?, completed_at = ?, updated_at = ?
         WHERE id = ?`,
     ).run(
       pick('title'),
@@ -308,6 +319,9 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
       nullable('estimated_hours'),
       nullable('planned_start_date'),
       nullable('planned_end_date'),
+      nullable('ice_impact'),
+      nullable('ice_confidence'),
+      nullable('ice_ease'),
       dates.started_at,
       dates.completed_at,
       now,

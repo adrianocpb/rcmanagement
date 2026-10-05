@@ -114,6 +114,11 @@ export interface Outcome {
   baseline_value: number | null;
   target_value: number | null;
   current_value: number | null;
+  ice_impact: number | null;
+  ice_confidence: number | null;
+  ice_ease: number | null;
+  /** Calculado pelo servidor: impacto × confiança × facilidade (nulo se faltar algum fator). */
+  ice_score: number | null;
   active: number;
   tasks_count: number;
   tasks_done: number;
@@ -138,6 +143,11 @@ export interface Task {
   status_color: string;
   priority: Priority;
   estimated_hours: number | null;
+  ice_impact: number | null;
+  ice_confidence: number | null;
+  ice_ease: number | null;
+  /** Calculado pelo servidor: impacto × confiança × facilidade (nulo se faltar algum fator). */
+  ice_score: number | null;
   planned_start_date: string | null;
   planned_end_date: string | null;
   started_at: string | null;

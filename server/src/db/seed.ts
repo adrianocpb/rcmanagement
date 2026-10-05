@@ -207,6 +207,23 @@ export function seedDemo(db: DB, now = new Date()) {
     );
     for (const h of hist) insertHistory.run(info.lastInsertRowid, h[0], h[1], h[3], h[2]);
   }
+  // Estimativas ICE (impacto, confiança, facilidade) de demonstração. Algumas tarefas ficam sem
+  // estimativa para mostrar o caso "não estimado".
+  const setTaskIce = db.prepare('UPDATE tasks SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
+  const taskIds = (db.prepare('SELECT id FROM tasks ORDER BY id').all() as { id: number }[]).map((r) => r.id);
+  taskIds.forEach((id, i) => {
+    if (i % 7 === 6) return;
+    setTaskIce.run(((i * 7) % 10) + 1, ((i * 3 + 4) % 10) + 1, ((i * 5 + 2) % 10) + 1, id);
+  });
+  const setOutcomeIce = db.prepare('UPDATE outcomes SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
+  [
+    [O.tma, 9, 7, 6],
+    [O.fcr, 7, 6, 8],
+    [O.conc, 8, 9, 7],
+    [O.fat, 6, 5, 4],
+    [O.onb, 5, 8, 9],
+  ].forEach(([name, i, c, e]) => setOutcomeIce.run(i, c, e, outcomes[name as string].id));
+
   return { tasks: tasks.length };
 }
 

@@ -59,3 +59,9 @@ export function sentOnly<T extends object>(parsed: T, body: unknown): Partial<T>
   const sent = body && typeof body === 'object' ? body : {};
   return Object.fromEntries(Object.entries(parsed).filter(([k]) => k in sent)) as Partial<T>;
 }
+
+/** Fator ICE opcional: inteiro de 1 a 10 (vazio = não estimado). */
+export const iceValue = z.preprocess(
+  (v) => (v === '' || v === undefined || v === null ? null : Number(v)),
+  z.number().int('use um número inteiro').min(1, 'mínimo 1').max(10, 'máximo 10').nullable(),
+);

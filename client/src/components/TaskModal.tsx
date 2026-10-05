@@ -6,6 +6,7 @@ import { api, type Priority, type TaskDetail } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { PRIORITY, PRIORITY_KEYS, fmtDate, fmtDateTime, fmtNumber, isoToLocalInput, localInputToIso } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
+import { IceBadge, IceFields, IceStrip, type IceKey } from './Ice';
 import { Avatar, DeadlineBadge, ErrorText, Field, Modal, PriorityBadge, Spinner, StatusPill } from './ui';
 
 /** Invalida tudo o que depende de tarefas. */
@@ -115,6 +116,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
             </select>
             <PriorityBadge priority={task.priority} />
             <DeadlineBadge state={task.deadline_state} />
+            <IceBadge score={task.ice_score} />
             <div className="ml-auto flex gap-1">
               <button className="btn-secondary" onClick={() => setEditing(true)}>
                 <Pencil size={14} /> Editar
@@ -183,6 +185,10 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               <Row label="Conclusão real">{fmtDateTime(task.completed_at)}</Row>
             </Section>
           </div>
+
+          <Section title="Priorização (ICE)">
+            <IceStrip item={task} />
+          </Section>
 
           <Section title="Histórico">
             <ol className="relative ml-2 border-l border-slate-200">
@@ -267,6 +273,9 @@ function toForm(t?: TaskDetail, defaults: Record<string, string | number> = {}):
     outcome_id: s(t?.outcome_id ?? defaults.outcome_id),
     priority: s(t?.priority ?? 'media'),
     estimated_hours: s(t?.estimated_hours),
+    ice_impact: s(t?.ice_impact),
+    ice_confidence: s(t?.ice_confidence),
+    ice_ease: s(t?.ice_ease),
     planned_start_date: s(t?.planned_start_date),
     planned_end_date: s(t?.planned_end_date),
     started_at: isoToLocalInput(t?.started_at ?? null),
@@ -467,6 +476,11 @@ function TaskForm({
           </div>
         </div>
       )}
+
+      <IceFields
+        values={f as Record<IceKey, string>}
+        onChange={(k, v) => setF((p) => ({ ...p, [k]: v }))}
+      />
 
       <Field label="Observações">
         <textarea className="input min-h-16" value={f.notes} onChange={set('notes')} />

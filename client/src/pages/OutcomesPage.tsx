@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Pencil, Plus, Target } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSortKey } from '../components/Ice';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
 import { EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner } from '../components/ui';
@@ -64,6 +65,7 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
       <div className="mb-1 flex items-start gap-2">
         <Target size={16} className="mt-0.5 shrink-0 text-violet-600" />
         <h3 className="flex-1 font-semibold text-slate-900 group-hover:text-blue-700">{o.name}</h3>
+        <IceBadge score={o.ice_score} />
         <PlanStatusBadge status={o.status} />
       </div>
       <div className="mb-3 ml-6 text-xs text-slate-500">
@@ -91,7 +93,8 @@ export function OutcomesPage() {
   const { data: epics } = useEpics();
   const [epicFilter, setEpicFilter] = useState('');
   const [creating, setCreating] = useState(false);
-  const list = outcomes?.filter((o) => !epicFilter || String(o.epic_id) === epicFilter) ?? [];
+  const [sortKey, setSortKey] = useState<IceSortKey | ''>('');
+  const list = sortByIce(outcomes?.filter((o) => !epicFilter || String(o.epic_id) === epicFilter) ?? [], sortKey);
 
   return (
     <div>
@@ -100,6 +103,19 @@ export function OutcomesPage() {
         subtitle="Resultados de negócio que as tarefas ajudam a produzir."
         actions={
           <>
+            <select
+              className="input w-auto py-1"
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as IceSortKey | '')}
+              aria-label="Ordenar outcomes"
+            >
+              <option value="">Ordenar: épico e nome</option>
+              {ICE_SORT_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  Ordenar: {opt.label} (maior primeiro)
+                </option>
+              ))}
+            </select>
             <select className="input w-auto py-1" value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)}>
               <option value="">Épico: todos</option>
               {epics?.map((e) => (
@@ -183,6 +199,8 @@ export function OutcomeDetailPage() {
         <div className="card p-5 lg:col-span-2">
           <h2 className="mb-3 text-xs font-semibold tracking-wide text-slate-400 uppercase">Indicador de negócio</h2>
           <IndicatorStrip outcome={o} large />
+          <h2 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">Priorização (ICE)</h2>
+          <IceStrip item={o} />
         </div>
       </div>
 
@@ -216,6 +234,9 @@ export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?
     baseline_value: s(outcome?.baseline_value),
     target_value: s(outcome?.target_value),
     current_value: s(outcome?.current_value),
+    ice_impact: s(outcome?.ice_impact),
+    ice_confidence: s(outcome?.ice_confidence),
+    ice_ease: s(outcome?.ice_ease),
     active: outcome ? !!outcome.active : true,
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
@@ -316,6 +337,7 @@ export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?
             </Field>
           </div>
         </fieldset>
+        <IceFields values={f} onChange={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={f.active} onChange={(e) => setF((p) => ({ ...p, active: e.target.checked }))} /> Ativo
         </label>

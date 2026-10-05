@@ -13,10 +13,22 @@ import { AlertCircle, CalendarDays, Plus, Target } from 'lucide-react';
 import { useState } from 'react';
 import { api, type Status, type Task } from '../lib/api';
 import { fmtShortDate } from '../lib/format';
+import { IceBadge, sortByIce, type IceSortKey } from './Ice';
 import { useInvalidateTasks, useTaskModal } from './TaskModal';
 import { Avatar, DeadlineBadge, PriorityBadge } from './ui';
 
-export function Kanban({ tasks, statuses, queryKey }: { tasks: Task[]; statuses: Status[]; queryKey: unknown[] }) {
+export function Kanban({
+  tasks,
+  statuses,
+  queryKey,
+  sortKey = '',
+}: {
+  tasks: Task[];
+  statuses: Status[];
+  queryKey: unknown[];
+  /** Ordenação dos cards dentro de cada coluna; vazio = padrão (prioridade e prazo). */
+  sortKey?: IceSortKey | '';
+}) {
   const qc = useQueryClient();
   const invalidate = useInvalidateTasks();
   const { open } = useTaskModal();
@@ -73,7 +85,7 @@ export function Kanban({ tasks, statuses, queryKey }: { tasks: Task[]; statuses:
             <Column
               key={s.id}
               status={s}
-              tasks={tasks.filter((t) => t.status_id === s.id)}
+              tasks={sortByIce(tasks.filter((t) => t.status_id === s.id), sortKey)}
               onOpen={(id) => open(id)}
               onAdd={() => open('new', { status_id: s.id })}
             />
@@ -152,6 +164,7 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={task.priority} />
+        <IceBadge score={task.ice_score} compact />
         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{task.sector_name}</span>
         {(task.deadline_state === 'atrasada' || task.deadline_state === 'concluida_com_atraso') && (
           <DeadlineBadge state={task.deadline_state} />
