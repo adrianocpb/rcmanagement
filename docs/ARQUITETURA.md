@@ -100,6 +100,10 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   fica vazia enquanto faltar algum fator. Ordenação: colunas da Lista de tarefas (clique no
   cabeçalho), seletor "Ordenar" no Kanban (dentro de cada coluna) e na tela de Outcomes; sempre do
   maior para o menor, com itens não estimados no fim.
+- **Lixeira:** excluir uma tarefa a move para a lixeira (`deleted_at`, `deleted_by`); ela some das listas,
+  do Kanban e dos indicadores. Qualquer usuário pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
+  seu histórico são removidos definitivamente — na subida do servidor, a cada 6 horas e ao abrir a
+  lixeira. Esvaziar a lixeira ou excluir um item definitivamente: somente administradores.
 - **Permissões:** Administrador gerencia usuários, setores e status. Todos os usuários criam e editam
   tarefas, épicos e outcomes.
 

@@ -14,7 +14,7 @@ export function useInvalidateTasks() {
   const qc = useQueryClient();
   return () =>
     Promise.all(
-      [['tasks'], ['task'], ['epics'], ['outcomes'], ['dashboard'], ['epic'], ['outcome']].map((k) =>
+      [['tasks'], ['task'], ['epics'], ['outcomes'], ['dashboard'], ['epic'], ['outcome'], ['trash']].map((k) =>
         qc.invalidateQueries({ queryKey: k }),
       ),
     );
@@ -123,8 +123,8 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               </button>
               <button
                 className="btn-danger"
-                onClick={() => confirm('Excluir esta tarefa? Ela deixará de aparecer no sistema.') && delMut.mutate()}
-                title="Excluir"
+                onClick={() => confirm('Mover esta tarefa para a lixeira? Ela poderá ser restaurada por 30 dias.') && delMut.mutate()}
+                title="Mover para a lixeira"
               >
                 <Trash2 size={14} />
               </button>

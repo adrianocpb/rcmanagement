@@ -1,4 +1,4 @@
-import { BarChart3, Flag, KanbanSquare, LogOut, Settings, Target } from 'lucide-react';
+import { BarChart3, Flag, KanbanSquare, LogOut, Settings, Target, Trash2 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TaskModal } from './TaskModal';
@@ -11,6 +11,7 @@ export function Layout() {
     { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { to: '/epicos', label: 'Épicos', icon: Flag },
     { to: '/outcomes', label: 'Outcomes', icon: Target },
+    { to: '/lixeira', label: 'Lixeira', icon: Trash2 },
     ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Administração', icon: Settings }] : []),
   ];
   return (

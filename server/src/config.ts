@@ -15,5 +15,7 @@ export const config = {
   /** Fuso horário de negócio: usado para "hoje", atrasos, períodos do dashboard e exibição. */
   timezone: process.env.APP_TIMEZONE ?? 'America/Sao_Paulo',
   sessionDays: Number(process.env.SESSION_DAYS ?? 7),
+  /** Dias que uma tarefa excluída fica na lixeira antes de ser removida definitivamente. */
+  trashDays: Number(process.env.TRASH_DAYS ?? 30),
   clientDist: path.join(repoRoot, 'client', 'dist'),
 };

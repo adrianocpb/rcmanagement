@@ -12,6 +12,7 @@ import { EpicDetailPage, EpicsPage } from './pages/EpicsPage';
 import { LoginPage } from './pages/LoginPage';
 import { OutcomeDetailPage, OutcomesPage } from './pages/OutcomesPage';
 import { TasksPage } from './pages/TasksPage';
+import { TrashPage } from './pages/TrashPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: true } },
@@ -30,6 +31,7 @@ function App() {
         <Route path="epicos/:id" element={<EpicDetailPage />} />
         <Route path="outcomes" element={<OutcomesPage />} />
         <Route path="outcomes/:id" element={<OutcomeDetailPage />} />
+        <Route path="lixeira" element={<TrashPage />} />
         {user.role === 'admin' && <Route path="admin" element={<AdminPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

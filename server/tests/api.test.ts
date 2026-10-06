@@ -324,3 +324,66 @@ describe('status "encerra sem entrega"', () => {
     expect([e.tasks_done, e.tasks_count]).toEqual([1, 1]);
   });
 });
+
+describe('lixeira', () => {
+  async function trashed() {
+    const { body } = await ctx.agent.post('/api/tasks').send(baseTask).expect(201);
+    await ctx.userAgent.delete(`/api/tasks/${body.id}`).expect(204);
+    return body.id as number;
+  }
+
+  it('tarefa excluída vai para a lixeira, com quem excluiu e dias restantes', async () => {
+    const id = await trashed();
+    const list = (await ctx.agent.get('/api/tasks')).body as { id: number }[];
+    expect(list.some((t) => t.id === id)).toBe(false);
+    const trash = (await ctx.userAgent.get('/api/tasks/trash').expect(200)).body;
+    expect(trash.days).toBe(30);
+    const item = trash.items.find((t: { id: number }) => t.id === id);
+    expect(item.deleted_by_name).toBe('Maria');
+    expect(item.days_left).toBe(30);
+  });
+
+  it('qualquer usuário pode restaurar', async () => {
+    const id = await trashed();
+    const restored = (await ctx.userAgent.post(`/api/tasks/${id}/restore`).expect(200)).body;
+    expect(restored.id).toBe(id);
+    await ctx.agent.get(`/api/tasks/${id}`).expect(200);
+    await ctx.userAgent.post(`/api/tasks/${id}/restore`).expect(404); // já não está na lixeira
+  });
+
+  it('esvaziar e excluir definitivamente: somente administradores', async () => {
+    const id = await trashed();
+    await ctx.userAgent.delete('/api/tasks/trash').expect(403);
+    await ctx.userAgent.delete(`/api/tasks/trash/${id}`).expect(403);
+
+    await ctx.agent.delete(`/api/tasks/trash/${id}`).expect(204);
+    const history = ctx.db.prepare('SELECT COUNT(*) AS n FROM task_status_history WHERE task_id = ?').get(id) as { n: number };
+    expect(history.n).toBe(0); // histórico removido junto
+
+    await trashed();
+    await trashed();
+    const r = (await ctx.agent.delete('/api/tasks/trash').expect(200)).body;
+    expect(r.removed).toBe(2);
+    expect((await ctx.agent.get('/api/tasks/trash')).body.items).toHaveLength(0);
+  });
+
+  it('remove automaticamente o que está há mais de 30 dias', async () => {
+    const old = await trashed();
+    const recent = await trashed();
+    const d31 = new Date(Date.now() - 31 * 86_400_000).toISOString();
+    ctx.db.prepare('UPDATE tasks SET deleted_at = ? WHERE id = ?').run(d31, old);
+    const items = (await ctx.agent.get('/api/tasks/trash')).body.items as { id: number }[];
+    expect(items.map((i) => i.id)).toEqual([recent]);
+    expect(ctx.db.prepare('SELECT id FROM tasks WHERE id = ?').get(old)).toBeUndefined();
+  });
+});
+
+describe('permissões de administração', () => {
+  it('usuário comum não cria nem edita setores, status ou usuários', async () => {
+    await ctx.userAgent.put('/api/sectors/1').send({ name: 'X' }).expect(403);
+    await ctx.userAgent.put(`/api/statuses/${ctx.byName('Backlog')}`).send({ name: 'X' }).expect(403);
+    await ctx.userAgent.put('/api/statuses/reorder').send({ ids: [1, 2] }).expect(403);
+    await ctx.userAgent.post('/api/users').send({ name: 'X', email: 'x@x.com', password: '123456' }).expect(403);
+    await ctx.userAgent.put('/api/users/2').send({ name: 'X' }).expect(403);
+  });
+});

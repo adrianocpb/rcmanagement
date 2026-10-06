@@ -16,7 +16,10 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   calculado automaticamente (impacto × confiança × facilidade), com ordenação por qualquer um deles.
 - **Dashboard**: Cycle Time, Lead Time, Throughput, tarefas criadas, WIP, atrasadas e Aging, com
   filtros por período, responsável, setor, épico e outcome.
-- **Administração**: usuários, setores e status (ordem, cor, padrão, início, conclusão, ativo).
+- **Administração** (somente administradores): usuários, setores e status (ordem, cor, padrão, início,
+  conclusão, WIP, encerra sem entrega, ativo).
+- **Lixeira**: tarefas excluídas ficam 30 dias e podem ser restauradas por qualquer usuário; depois são
+  removidas automaticamente. Esvaziar a lixeira / excluir definitivamente: somente administradores.
 - Login simples com perfis Administrador e Usuário.
 
 Detalhes de arquitetura, modelo de dados, regras e fórmulas: **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**.
@@ -78,6 +81,7 @@ Variáveis de ambiente (todas opcionais):
 | `DB_PATH` | `data/app.db` | Arquivo SQLite (backup = copiar o arquivo) |
 | `APP_TIMEZONE` | `America/Sao_Paulo` | Fuso de negócio para datas, atrasos e períodos |
 | `SESSION_DAYS` | `7` | Validade da sessão |
+| `TRASH_DAYS` | `30` | Dias que uma tarefa excluída fica na lixeira antes da remoção definitiva |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | Administrador inicial em banco vazio |
 | `COOKIE_SECURE` | `false` | Use `true` ao servir via HTTPS |
 

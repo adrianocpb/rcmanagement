@@ -344,9 +344,67 @@ export function changeStatus(db: DB, id: number, statusId: number, userId: numbe
   return updateTask(db, id, { status_id: statusId }, userId, now);
 }
 
-export function deleteTask(db: DB, id: number) {
+/** Move a tarefa para a lixeira (exclusão lógica). */
+export function deleteTask(db: DB, id: number, userId?: number) {
+  const now = nowIso();
   const info = db
-    .prepare('UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL')
-    .run(nowIso(), nowIso(), id);
+    .prepare('UPDATE tasks SET deleted_at = ?, deleted_by = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL')
+    .run(now, userId ?? null, now, id);
   if (info.changes === 0) throw notFound('Tarefa');
+}
+
+// ---------------- Lixeira ----------------
+
+/** Instante a partir do qual itens excluídos antes dele são removidos definitivamente. */
+function trashCutoff(days: number, now: Date) {
+  return new Date(now.getTime() - days * 86_400_000).toISOString();
+}
+
+export function listTrash(db: DB, days: number, now = new Date()) {
+  const rows = db
+    .prepare(
+      `SELECT t.id, t.title, t.deleted_at, s.name AS status_name, s.color AS status_color,
+              sec.name AS sector_name, asg.name AS assignee_name, del.name AS deleted_by_name
+         FROM tasks t
+         JOIN statuses s  ON s.id = t.status_id
+         JOIN sectors sec ON sec.id = t.sector_id
+         JOIN users asg   ON asg.id = t.assignee_id
+         LEFT JOIN users del ON del.id = t.deleted_by
+        WHERE t.deleted_at IS NOT NULL
+        ORDER BY t.deleted_at DESC`,
+    )
+    .all() as { deleted_at: string }[];
+  return rows.map((r) => {
+    const purgeAt = new Date(new Date(r.deleted_at).getTime() + days * 86_400_000);
+    return {
+      ...r,
+      purge_at: purgeAt.toISOString(),
+      days_left: Math.max(0, Math.ceil((purgeAt.getTime() - now.getTime()) / 86_400_000)),
+    };
+  });
+}
+
+export function restoreTask(db: DB, id: number) {
+  const info = db
+    .prepare('UPDATE tasks SET deleted_at = NULL, deleted_by = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NOT NULL')
+    .run(nowIso(), id);
+  if (info.changes === 0) throw notFound('Tarefa na lixeira');
+  return getTask(db, id);
+}
+
+/** Remoção definitiva de UMA tarefa da lixeira (o histórico vai junto, por cascata). */
+export function purgeTask(db: DB, id: number) {
+  const info = db.prepare('DELETE FROM tasks WHERE id = ? AND deleted_at IS NOT NULL').run(id);
+  if (info.changes === 0) throw notFound('Tarefa na lixeira');
+}
+
+/** Esvazia a lixeira. Sem `olderThanDays`, remove tudo; com ele, só o que passou do prazo. */
+export function purgeTrash(db: DB, olderThanDays?: number, now = new Date()): number {
+  const info =
+    olderThanDays === undefined
+      ? db.prepare('DELETE FROM tasks WHERE deleted_at IS NOT NULL').run()
+      : db
+          .prepare('DELETE FROM tasks WHERE deleted_at IS NOT NULL AND deleted_at < ?')
+          .run(trashCutoff(olderThanDays, now));
+  return info.changes;
 }

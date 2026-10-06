@@ -160,4 +160,12 @@ UPDATE statuses SET counts_in_wip = 0 WHERE is_default = 1 OR is_completion_stat
     id: '004_status_is_cancel',
     sql: `ALTER TABLE statuses ADD COLUMN is_cancel_status INTEGER NOT NULL DEFAULT 0;`,
   },
+  {
+    // Lixeira: quem excluiu a tarefa (a data já existe em deleted_at).
+    id: '005_tasks_deleted_by',
+    sql: `
+ALTER TABLE tasks ADD COLUMN deleted_by INTEGER REFERENCES users(id);
+CREATE INDEX idx_tasks_deleted_at ON tasks(deleted_at);
+`,
+  },
 ];

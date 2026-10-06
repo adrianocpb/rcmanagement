@@ -1,10 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
+import { config } from '../../config.js';
+import { requireAdmin } from '../../lib/auth.js';
 import { idParam } from '../../lib/http.js';
 import { isValidDate } from '../../lib/time.js';
 import { PRIORITIES } from '../../lib/validation.js';
-import { changeStatus, createTask, deleteTask, getTask, listTasks, updateTask } from './service.js';
+import {
+  changeStatus,
+  createTask,
+  deleteTask,
+  getTask,
+  listTasks,
+  listTrash,
+  purgeTask,
+  purgeTrash,
+  restoreTask,
+  updateTask,
+} from './service.js';
 
 const qId = z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().int().positive().optional());
 const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(isValidDate).optional());
@@ -34,6 +47,27 @@ export function tasksRouter(db: DB) {
     res.json(listTasks(db, taskFiltersSchema.parse(req.query)));
   });
 
+  // ---- Lixeira (rotas antes de "/:id") ----
+  r.get('/trash', (_req, res) => {
+    purgeTrash(db, config.trashDays); // remove o que já passou do prazo antes de listar
+    res.json({ days: config.trashDays, items: listTrash(db, config.trashDays) });
+  });
+
+  // Esvaziar a lixeira: somente administradores.
+  r.delete('/trash', requireAdmin, (_req, res) => {
+    res.json({ removed: purgeTrash(db) });
+  });
+
+  // Excluir definitivamente um item da lixeira: somente administradores.
+  r.delete('/trash/:id', requireAdmin, (req, res) => {
+    purgeTask(db, idParam(req));
+    res.status(204).end();
+  });
+
+  r.post('/:id/restore', (req, res) => {
+    res.json(restoreTask(db, idParam(req)));
+  });
+
   r.get('/:id', (req, res) => {
     res.json(getTask(db, idParam(req)));
   });
@@ -53,7 +87,7 @@ export function tasksRouter(db: DB) {
   });
 
   r.delete('/:id', (req, res) => {
-    deleteTask(db, idParam(req));
+    deleteTask(db, idParam(req), req.user!.id);
     res.status(204).end();
   });
 
