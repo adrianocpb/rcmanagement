@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +20,7 @@ export function LoginPage() {
           setError(null);
           try {
             await login(email, password);
+            navigate('/', { replace: true }); // primeira tela após o login: Dashboard
           } catch (err) {
             setError((err as Error).message);
           } finally {
@@ -25,15 +28,11 @@ export function LoginPage() {
           }
         }}
       >
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 13l4 4 10-11" />
-            </svg>
-          </div>
+        <div className="flex flex-col items-center gap-3 pb-1 text-center">
+          <img src="/logo-rc.png" alt="RC+" className="h-14 w-auto" />
           <div>
-            <h1 className="text-base font-semibold text-slate-900">Acompanhamento de Entregas</h1>
-            <p className="text-xs text-slate-500">Área de Desenvolvimento</p>
+            <h1 className="text-lg font-semibold text-slate-900">Gestão de Melhorias</h1>
+            <p className="text-sm text-slate-500">Solução RC+</p>
           </div>
         </div>
         <label className="block">

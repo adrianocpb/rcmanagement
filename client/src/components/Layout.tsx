@@ -7,8 +7,8 @@ import { Avatar } from './ui';
 export function Layout() {
   const { user, logout } = useAuth();
   const links = [
-    { to: '/', label: 'Tarefas', icon: KanbanSquare, end: true },
-    { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { to: '/', label: 'Dashboard', icon: BarChart3, end: true },
+    { to: '/tarefas', label: 'Tarefas', icon: KanbanSquare },
     { to: '/epicos', label: 'Épicos', icon: Flag },
     { to: '/outcomes', label: 'Outcomes', icon: Target },
     { to: '/lixeira', label: 'Lixeira', icon: Trash2 },
@@ -19,12 +19,8 @@ export function Layout() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex h-14 items-center gap-4 px-4 lg:px-6">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-blue-600 text-white">
-              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 13l4 4 10-11" />
-              </svg>
-            </div>
-            <span className="hidden text-sm font-semibold text-slate-900 sm:inline">Entregas · Dev</span>
+            <img src="/logo-rc.png" alt="RC+" className="h-7 w-auto" />
+            <span className="hidden text-sm font-semibold whitespace-nowrap text-slate-900 sm:inline">Gestão de Melhorias</span>
           </div>
           <nav className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto">
             {links.map(({ to, label, icon: Icon, end }) => (

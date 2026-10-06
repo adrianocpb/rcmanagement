@@ -1,4 +1,4 @@
-# Acompanhamento de Entregas — Desenvolvimento
+# Gestão de Melhorias — Solução RC+
 
 Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolvimento:
 **Épico → Outcome → Tarefas**, Kanban, lista, indicadores de fluxo e indicadores de negócio.

@@ -25,8 +25,9 @@ function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<TasksPage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route index element={<DashboardPage />} />
+        <Route path="tarefas" element={<TasksPage />} />
+        <Route path="dashboard" element={<Navigate to="/" replace />} />
         <Route path="epicos" element={<EpicsPage />} />
         <Route path="epicos/:id" element={<EpicDetailPage />} />
         <Route path="outcomes" element={<OutcomesPage />} />
