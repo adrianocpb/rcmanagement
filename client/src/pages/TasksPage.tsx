@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Columns3, List, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ICE_SORT_OPTIONS, type IceSortKey } from '../components/Ice';
 import { Kanban } from '../components/Kanban';
 import { EMPTY_FILTERS, TaskFilters, type TaskFilterValues } from '../components/TaskFilters';
@@ -38,6 +39,21 @@ export function TasksPage() {
   const [filters, setFilters] = usePersistentState<TaskFilterValues>('tasks.filters', EMPTY_FILTERS);
   const { open } = useTaskModal();
   const { data: statuses } = useStatuses();
+  const [params, setParams] = useSearchParams();
+
+  // Busca vinda da barra superior (?q=...): aplica no filtro de título e limpa a URL.
+  const searched = params.get('q');
+  useEffect(() => {
+    if (searched === null) return;
+    setFilters((f) => ({ ...f, q: searched }));
+    setParams(
+      (p) => {
+        p.delete('q');
+        return p;
+      },
+      { replace: true },
+    );
+  }, [searched, setFilters, setParams]);
 
   const queryKey = ['tasks', filters];
   const { data: tasks, isLoading, error } = useQuery({
@@ -76,7 +92,7 @@ export function TasksPage() {
                   aria-selected={prefs.view === key}
                   onClick={() => setPrefs((p) => ({ ...p, view: key }))}
                   className={`inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium ${
-                    prefs.view === key ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                    prefs.view === key ? 'bg-blue-600 text-white shadow-[0_2px_6px_0_rgba(115,103,240,0.3)]' : 'text-slate-600 hover:bg-[rgba(47,43,61,0.06)]'
                   }`}
                 >
                   <Icon size={14} /> {label}

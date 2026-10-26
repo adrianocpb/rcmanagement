@@ -122,19 +122,19 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-w-60 flex-1 basis-0 flex-col rounded-xl border transition-colors ${single ? 'max-w-sm' : ''} ${
-        isOver ? 'border-blue-400 bg-blue-50/70' : 'border-slate-200 bg-slate-100/70'
+      className={`flex min-w-60 flex-1 basis-0 flex-col rounded-md transition-colors ${single ? 'max-w-sm' : ''} ${
+        isOver ? 'bg-blue-50 ring-1 ring-blue-300' : 'bg-transparent'
       }`}
     >
       <div className="flex items-center gap-2 px-3 pt-3 pb-2">
         <span className="size-2.5 rounded-full" style={{ background: status.color }} />
-        <h2 className="truncate text-[12px] font-semibold tracking-wide text-slate-700 uppercase" title={status.name}>
+        <h2 className="truncate text-[13px] font-medium tracking-[0.2px] text-slate-700 uppercase" title={status.name}>
           {status.name}
         </h2>
-        <span className="shrink-0 rounded-full bg-white px-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-200">{tasks.length}</span>
+        <span className="shrink-0 rounded bg-[rgba(128,131,144,0.16)] px-1.5 text-xs font-medium text-slate-600">{tasks.length}</span>
         {overdue > 0 && (
           <span
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-100 px-1.5 text-xs font-semibold text-red-700"
+            className="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-50 px-1.5 text-xs font-medium text-red-700"
             title={`${overdue} tarefa(s) atrasada(s)`}
           >
             <AlertCircle size={11} /> {overdue}
@@ -148,7 +148,7 @@ function Column({
         {tasks.map((t) => (
           <DraggableCard key={t.id} task={t} onOpen={onOpen} />
         ))}
-        {tasks.length === 0 && <div className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">Arraste tarefas para cá</div>}
+        {tasks.length === 0 && <div className="rounded-md border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">Arraste tarefas para cá</div>}
       </div>
     </div>
   );
@@ -167,12 +167,12 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
   const late = task.is_overdue;
   return (
     <article
-      className={`cursor-grab rounded-lg border bg-white p-2.5 shadow-xs transition hover:shadow-md active:cursor-grabbing ${
-        late ? 'border-red-300 border-l-4 border-l-red-500' : 'border-slate-200'
-      } ${overlay ? 'rotate-2 shadow-xl' : ''}`}
+      className={`cursor-grab rounded-md bg-white p-3 elev-card transition hover:elev-float active:cursor-grabbing ${
+        late ? 'ring-1 ring-red-300' : ''
+      } ${overlay ? 'rotate-2 elev-float' : ''}`}
     >
       <div className="mb-1.5 flex items-start gap-2">
-        <h3 className="flex-1 text-[13px] leading-snug font-medium text-slate-900">{task.title}</h3>
+        <h3 className="flex-1 text-sm leading-snug font-medium text-slate-700">{task.title}</h3>
         <Avatar name={task.assignee_name} id={task.assignee_id} />
       </div>
       {task.outcome_name && (
@@ -184,7 +184,7 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={task.priority} />
         <IceBadge score={task.ice_score} compact />
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{task.sector_name}</span>
+        <span className="rounded bg-[rgba(128,131,144,0.16)] px-1.5 py-0.5 text-xs text-slate-600">{task.sector_name}</span>
         {(task.deadline_state === 'atrasada' ||
           task.deadline_state === 'concluida_com_atraso' ||
           task.deadline_state === 'cancelada') && (

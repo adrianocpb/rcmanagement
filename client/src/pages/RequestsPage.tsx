@@ -69,7 +69,7 @@ function RequestCard({ request: r, onOpen, showRequester }: { request: Improveme
         )}
       </div>
       {(r.status === 'info' || r.status === 'recusada') && r.decision_note && (
-        <p className={`mt-2 rounded-md px-3 py-1.5 text-sm ${r.status === 'info' ? 'bg-blue-50 text-blue-800' : 'bg-slate-100 text-slate-700'}`}>
+        <p className={`mt-2 rounded-md px-3 py-1.5 text-sm ${r.status === 'info' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-700'}`}>
           <b>{r.status === 'info' ? 'Mais informação: ' : 'Motivo: '}</b>
           {r.decision_note}
         </p>
@@ -197,7 +197,7 @@ function RequestDetailModal({ id, onClose }: { id: number; onClose: () => void }
           </div>
 
           {r.decision_note && (
-            <div className={`rounded-md px-3 py-2 text-sm ${r.status === 'info' ? 'bg-blue-50 text-blue-800' : 'bg-slate-100 text-slate-700'}`}>
+            <div className={`rounded-md px-3 py-2 text-sm ${r.status === 'info' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-700'}`}>
               <b>{r.status === 'info' ? 'Mais informação solicitada' : 'Motivo da recusa'}</b>
               {r.decided_by_name && ` (${r.decided_by_name}, ${fmtDateTime(r.decided_at)})`}: {r.decision_note}
             </div>
@@ -236,10 +236,10 @@ function RequestDetailModal({ id, onClose }: { id: number; onClose: () => void }
                   <button className="btn-primary" onClick={() => setConverting('task')}>
                     <KanbanSquare size={14} /> Tarefa
                   </button>
-                  <button className="btn-primary" onClick={() => setConverting('outcome')}>
+                  <button className="btn-tonal" onClick={() => setConverting('outcome')}>
                     <Target size={14} /> Outcome
                   </button>
-                  <button className="btn-primary" onClick={() => setConverting('epic')}>
+                  <button className="btn-tonal" onClick={() => setConverting('epic')}>
                     <Flag size={14} /> Épico
                   </button>
                   <div className="ml-auto flex flex-wrap gap-2">

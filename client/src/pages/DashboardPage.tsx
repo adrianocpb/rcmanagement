@@ -20,14 +20,14 @@ import { api, qs, type DashboardData } from '../lib/api';
 import { addDays, fmtDate, fmtDays, fmtShortDate, todayLocal } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useUserOptions } from '../lib/queries';
 
-// Paleta categórica validada (ver skill de dataviz): slot 1 azul, 2 laranja, 3 verde-água.
+// Cores do design system RC+ apps: série principal primary, segunda série info, grade em border.
 const C = {
-  created: '#2a78d6',
-  completed: '#1baf7a',
-  avg: '#2a78d6',
-  aging: ['#86b6ef', '#3987e5', '#256abf', '#0d366b'],
-  grid: '#e7e6e2',
-  axis: '#6b6a66',
+  created: '#7367f0',
+  completed: '#00bad1',
+  avg: '#7367f0',
+  aging: ['#c7c2f9', '#aaa2f6', '#7367f0', '#3f378c'],
+  grid: '#e6e6e8',
+  axis: '#6d6b77',
 };
 
 type Preset = 'week' | 'month' | '30' | '90' | '180' | 'custom';
@@ -237,7 +237,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
             <ResponsiveContainer width="100%" height={Math.max(140, data.time_in_status.length * 44)}>
               <BarChart data={data.time_in_status} layout="vertical" margin={{ top: 0, right: 56, left: 8, bottom: 0 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12, fill: '#334155' }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12, fill: '#444050' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<TimeInStatusTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
                 <Bar
                   dataKey="avg_days"
@@ -245,7 +245,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
                   radius={[0, 4, 4, 0]}
                   maxBarSize={22}
                   isAnimationActive={false}
-                  label={{ position: 'right', fontSize: 12, fill: '#334155', formatter: (v: unknown) => fmtDays(v as number) }}
+                  label={{ position: 'right', fontSize: 12, fill: '#444050', formatter: (v: unknown) => fmtDays(v as number) }}
                 >
                   {data.time_in_status.map((s) => (
                     <Cell key={s.status_id} fill={s.color} />
@@ -262,9 +262,9 @@ function DashboardBody({ data }: { data: DashboardData }) {
           <ResponsiveContainer width="100%" height={Math.max(160, data.status_distribution.length * 40)}>
             <BarChart data={data.status_distribution} layout="vertical" margin={{ top: 0, right: 32, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12, fill: '#334155' }} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12, fill: '#444050' }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
-              <Bar dataKey="count" name="Tarefas" radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: 'right', fontSize: 12, fill: '#334155' }}>
+              <Bar dataKey="count" name="Tarefas" radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: 'right', fontSize: 12, fill: '#444050' }}>
                 {data.status_distribution.map((s) => (
                   <Cell key={s.status_id} fill={s.color} />
                 ))}
@@ -280,7 +280,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
               <XAxis dataKey="label" tick={{ fontSize: 12, fill: C.axis }} tickLine={false} axisLine={{ stroke: C.grid }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
-              <Bar dataKey="count" name="Tarefas" radius={[4, 4, 0, 0]} maxBarSize={56} label={{ position: 'top', fontSize: 12, fill: '#334155' }}>
+              <Bar dataKey="count" name="Tarefas" radius={[4, 4, 0, 0]} maxBarSize={56} label={{ position: 'top', fontSize: 12, fill: '#444050' }}>
                 {data.aging.map((a, i) => (
                   <Cell key={a.key} fill={C.aging[i]} />
                 ))}

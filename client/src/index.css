@@ -1,36 +1,129 @@
 @import 'tailwindcss';
 
+/*
+ * Design system RC+ apps: cor de marca violeta (primary), neutros cinza-lavanda, Public Sans,
+ * cantos de 6px e cartões brancos com sombra leve. As escalas do Tailwind são remapeadas para os
+ * tokens do design system, então as classes existentes (blue-*, slate-*, red-*…) já seguem o padrão:
+ * blue-* = primary, slate-* = neutros, red-* = danger, green e emerald = success,
+ * amber e orange = warning, sky-* = info.
+ */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+  --color-blue-50: #f1f0fe;
+  --color-blue-100: #e3e1fc;
+  --color-blue-200: #c7c2f9;
+  --color-blue-300: #aaa2f6;
+  --color-blue-400: #8f85f3;
+  --color-blue-500: #7367f0;
+  --color-blue-600: #7367f0;
+  --color-blue-700: #6157ca;
+  --color-blue-800: #5248b5;
+  --color-blue-900: #3f378c;
+  --color-violet-50: #f1f0fe;
+  --color-violet-100: #e3e1fc;
+  --color-violet-500: #7367f0;
+  --color-violet-600: #7367f0;
+  --color-violet-700: #6157ca;
+
+  --color-slate-50: #f8f7fa;
+  --color-slate-100: #f1f0f4;
+  --color-slate-200: #e6e6e8;
+  --color-slate-300: #d1d0d4;
+  --color-slate-400: #acaab1;
+  --color-slate-500: #6d6b77;
+  --color-slate-600: #5f5c6a;
+  --color-slate-700: #444050;
+  --color-slate-800: #444050;
+  --color-slate-900: #2f2b3d;
+
+  --color-red-50: #ffe4e5;
+  --color-red-100: #ffdbdc;
+  --color-red-200: #ffc9ca;
+  --color-red-300: #ffa5a8;
+  --color-red-400: #ff7a7e;
+  --color-red-500: #ff4c51;
+  --color-red-600: #ba373b;
+  --color-red-700: #ba373b;
+  --color-red-800: #9a2d31;
+  --color-red-900: #7a2427;
+
+  --color-green-50: #dff7e9;
+  --color-green-100: #c9f1db;
+  --color-green-500: #28c76f;
+  --color-green-600: #28c76f;
+  --color-green-700: #197b45;
+  --color-green-800: #156a3b;
+  --color-green-900: #10512d;
+  --color-emerald-50: #dff7e9;
+  --color-emerald-100: #c9f1db;
+  --color-emerald-500: #28c76f;
+  --color-emerald-600: #197b45;
+  --color-emerald-700: #197b45;
+
+  --color-amber-50: #fff0e1;
+  --color-amber-100: #ffe4c9;
+  --color-amber-500: #ff9f43;
+  --color-amber-600: #e88f39;
+  --color-amber-700: #995f28;
+  --color-amber-800: #995f28;
+  --color-orange-50: #fff0e1;
+  --color-orange-100: #ffe4c9;
+  --color-orange-500: #ff9f43;
+  --color-orange-600: #e88f39;
+  --color-orange-700: #995f28;
+
+  --color-sky-50: #dbf6f9;
+  --color-sky-100: #c4f0f6;
+  --color-sky-500: #00bad1;
+  --color-sky-600: #00a3b8;
+  --color-sky-700: #007584;
+
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+}
+
+/* Sombras do design system: cartões (shadow-sm) e elementos flutuantes (shadow-md). */
+@utility elev-card {
+  box-shadow: 0 2px 6px 0 rgba(47, 43, 61, 0.12);
+}
+@utility elev-float {
+  box-shadow: 0 4px 18px 0 rgba(47, 43, 61, 0.16);
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-slate-50 text-slate-800 antialiased; }
+body { @apply bg-slate-50 text-slate-500 antialiased; }
 
 @layer components {
   .input {
-    @apply w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-800 shadow-xs
-      placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700
+      placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none
       disabled:bg-slate-100 disabled:text-slate-500;
   }
-  .label { @apply mb-1 block text-xs font-medium text-slate-600; }
+  .label { @apply mb-1 block text-[13px] text-slate-700; }
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition
-      disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition
+      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600
+      disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none;
 }
 
 @layer components {
-  .btn-primary { @apply btn bg-blue-600 text-white shadow-sm hover:bg-blue-700; }
-  .btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 shadow-xs hover:bg-slate-50; }
-  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
-  .btn-danger { @apply btn text-red-600 hover:bg-red-50; }
-  .card { @apply rounded-lg border border-slate-200 bg-white shadow-xs; }
-  .th { @apply px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase; }
-  .td { @apply px-3 py-2 align-middle text-sm; }
-  /* Filtro em uso (diferente do padrão): borda verde grossa para chamar atenção. */
+  /* Ação principal da área (um por área). */
+  .btn-primary { @apply btn bg-blue-600 text-white shadow-[0_2px_6px_0_rgba(115,103,240,0.3)] hover:bg-[#685dd8]; }
+  /* Secundária tonal neutra. */
+  .btn-secondary { @apply btn bg-[rgba(128,131,144,0.16)] text-slate-600 hover:bg-[rgba(128,131,144,0.24)]; }
+  /* Secundária tonal com a cor da marca. */
+  .btn-tonal { @apply btn bg-[rgba(115,103,240,0.16)] text-blue-700 hover:bg-[rgba(115,103,240,0.24)]; }
+  .btn-ghost { @apply btn text-slate-500 hover:bg-[rgba(47,43,61,0.06)]; }
+  .btn-danger { @apply btn bg-[rgba(255,76,81,0.16)] text-red-700 hover:bg-[rgba(255,76,81,0.24)]; }
+  .card { @apply rounded-md bg-white elev-card; }
+  .th { @apply px-4 py-3 text-left text-[13px] font-medium tracking-[0.2px] whitespace-nowrap text-slate-700 uppercase; }
+  .td { @apply px-4 py-2.5 align-middle text-sm; }
+  /* Filtro em uso (diferente do padrão): borda na cor da marca para chamar atenção. */
   .filter-active {
-    @apply border-green-600 bg-green-50 font-semibold text-green-900 ring-2 ring-green-600;
+    @apply border-blue-600 bg-blue-50 font-medium text-blue-800 ring-1 ring-blue-600;
   }
 }

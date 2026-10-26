@@ -27,17 +27,17 @@ export function Modal({
   if (!open) return null;
   const width = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl' }[size];
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 sm:p-8">
       <div className="fixed inset-0" onClick={onClose} />
-      <div className={`relative w-full ${width} rounded-xl bg-white shadow-2xl`} role="dialog" aria-modal="true">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-3.5">
-          <div className="min-w-0 text-base font-semibold text-slate-900">{title}</div>
+      <div className={`relative w-full ${width} rounded-xl bg-white elev-float`} role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+          <div className="min-w-0 text-lg font-medium text-slate-700">{title}</div>
           <button className="btn-ghost -mr-2 p-1" onClick={onClose} aria-label="Fechar">
             <X size={18} />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">{footer}</div>}
+        <div className="px-6 py-5">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">{footer}</div>}
       </div>
     </div>
   );
@@ -58,7 +58,7 @@ export function Field({ label, required, children, className = '' }: { label: st
 export function PriorityBadge({ priority, compact }: { priority: Priority; compact?: boolean }) {
   const p = PRIORITY[priority];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${p.cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${p.cls}`}>
       <span className={`size-1.5 rounded-full ${p.dot}`} />
       {!compact && p.label}
       {compact && p.label}
@@ -69,24 +69,32 @@ export function PriorityBadge({ priority, compact }: { priority: Priority; compa
 export function DeadlineBadge({ state }: { state: DeadlineState }) {
   const d = DEADLINE[state];
   if (!d) return null;
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${d.cls}`}>{d.label}</span>;
+  return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${d.cls}`}>{d.label}</span>;
 }
 
 export function StatusPill({ name, color }: { name: string; color: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-slate-700">
+    <span className="inline-flex items-center gap-1.5 rounded bg-[rgba(128,131,144,0.16)] px-2 py-0.5 text-xs font-medium whitespace-nowrap text-slate-700">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {name}
     </span>
   );
 }
 
-const AVATAR_COLORS = ['bg-blue-600', 'bg-violet-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-700', 'bg-fuchsia-600'];
+// Avatares tonais do design system: fundo suave + iniciais no tom escuro (estável por usuário).
+const AVATAR_COLORS = [
+  'bg-blue-50 text-blue-700',
+  'bg-green-50 text-green-700',
+  'bg-amber-50 text-amber-800',
+  'bg-red-50 text-red-700',
+  'bg-sky-50 text-sky-700',
+  'bg-[rgba(128,131,144,0.16)] text-slate-600',
+];
 export function Avatar({ name, id, size = 'sm' }: { name: string | null; id?: number | null; size?: 'sm' | 'md' }) {
   const color = AVATAR_COLORS[(id ?? 0) % AVATAR_COLORS.length];
-  const s = size === 'sm' ? 'size-6 text-[10px]' : 'size-8 text-xs';
+  const s = size === 'sm' ? 'size-6 text-[10px]' : 'size-[38px] text-sm';
   return (
-    <span title={name ?? ''} className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${color} ${s}`}>
+    <span title={name ?? ''} className={`inline-flex shrink-0 items-center justify-center rounded-full font-medium ${color} ${s}`}>
       {initials(name)}
     </span>
   );
@@ -95,14 +103,14 @@ export function Avatar({ name, id, size = 'sm' }: { name: string | null; id?: nu
 export function ProgressBar({ value, className = '' }: { value: number; className?: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
-    <div className={`h-1.5 w-full overflow-hidden rounded-full bg-slate-200 ${className}`}>
+    <div className={`h-1.5 w-full overflow-hidden rounded-full bg-blue-100 ${className}`}>
       <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${v}%` }} />
     </div>
   );
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">{children}</div>;
+  return <div className="rounded-md border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{children}</div>;
 }
 
 export function ErrorText({ error }: { error: unknown }) {
@@ -122,8 +130,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+        <h1 className="text-2xl font-medium text-slate-700">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
