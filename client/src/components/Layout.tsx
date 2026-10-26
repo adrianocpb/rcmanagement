@@ -1,13 +1,13 @@
 import {
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   Flag,
   Inbox,
   KanbanSquare,
   LogOut,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   Search,
   Settings,
   Target,
@@ -95,15 +95,24 @@ export function Layout() {
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         } ${whenCollapsed('md:w-[78px]')}`}
       >
-        <div className={`flex h-16 items-center gap-2.5 px-6 ${whenCollapsed('md:justify-center md:px-2')}`}>
+        <div className={`flex h-16 items-center gap-2 pr-4 pl-5 ${whenCollapsed('md:justify-center md:px-2')}`}>
           <img src="/logo-rc.png" alt="RC+" className={`h-7 w-auto ${whenCollapsed('md:h-5')}`} />
-          <span className={`min-w-0 flex-1 truncate text-base font-semibold whitespace-nowrap text-slate-700 ${whenCollapsed('md:hidden')}`}>
+          <span className={`min-w-0 flex-1 truncate text-[15px] font-semibold whitespace-nowrap text-slate-700 ${whenCollapsed('md:hidden')}`}>
             Gestão de Melhorias
           </span>
           <button className="btn-ghost -mr-2 p-1.5 md:hidden" onClick={() => setMenuOpen(false)} aria-label="Fechar menu">
             <X size={18} />
           </button>
         </div>
+        {/* Recolher/expandir: botão redondo na borda do menu, visível nos dois estados. */}
+        <button
+          className="absolute top-5 -right-3 hidden size-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 elev-card hover:bg-blue-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:inline-flex"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
         <nav className={`flex-1 overflow-y-auto px-3.5 pb-6 ${whenCollapsed('md:px-3')}`} aria-label="Menu principal">
           {groups.map((g) => (
             <div key={g.title}>
@@ -152,14 +161,6 @@ export function Layout() {
           <header className="flex h-14 items-center gap-3 rounded-md bg-white px-4 elev-card md:px-6">
             <button className="btn-ghost -ml-2 p-1.5 md:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu">
               <Menu size={20} />
-            </button>
-            <button
-              className="btn-ghost -ml-2 hidden p-1.5 md:inline-flex"
-              onClick={toggleCollapsed}
-              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            >
-              {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
             {isRequester ? (
               <span className="hidden truncate text-[15px] text-slate-500 sm:block">Envie ideias de melhoria e acompanhe cada uma.</span>
