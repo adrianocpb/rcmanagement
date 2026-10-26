@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Pencil, Plus, Target } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSortKey } from '../components/Ice';
+import { OriginRequestCard } from '../components/Requests';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
 import { EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner } from '../components/ui';
@@ -181,6 +182,11 @@ export function OutcomeDetailPage() {
                 </Link>
               </p>
               {o.description && <p className="mt-2 text-sm whitespace-pre-wrap text-slate-600">{o.description}</p>}
+              {o.origin_request && (
+                <div className="mt-3">
+                  <OriginRequestCard origin={o.origin_request} />
+                </div>
+              )}
             </div>
             <button className="btn-secondary" onClick={() => setEditing(true)}>
               <Pencil size={14} /> Editar
@@ -221,20 +227,40 @@ export function OutcomeDetailPage() {
   );
 }
 
-export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?: Outcome; defaultEpicId?: number; onClose: () => void }) {
+export function OutcomeFormModal({
+  outcome,
+  defaultEpicId,
+  onClose,
+  title,
+  banner,
+  prefill,
+  submit,
+  onSaved,
+}: {
+  outcome?: Outcome;
+  defaultEpicId?: number;
+  onClose: () => void;
+  title?: string;
+  banner?: ReactNode;
+  /** Textos iniciais de um novo outcome (ex.: vindos de uma solicitação). */
+  prefill?: { name?: string; description?: string; indicator_name?: string };
+  /** Substitui a criação padrão (ex.: aprovar uma solicitação convertendo-a em outcome). */
+  submit?: (body: Record<string, unknown>) => Promise<unknown>;
+  onSaved?: () => void;
+}) {
   const qc = useQueryClient();
   const { data: users } = useUserOptions();
   const { data: epics } = useEpics(true);
   const s = (v: unknown) => (v == null ? '' : String(v));
   const [f, setF] = useState({
-    name: s(outcome?.name),
-    description: s(outcome?.description),
+    name: s(outcome?.name ?? prefill?.name),
+    description: s(outcome?.description ?? prefill?.description),
     epic_id: s(outcome?.epic_id ?? defaultEpicId),
     owner_id: s(outcome?.owner_id),
     status: outcome?.status ?? 'planejado',
     start_date: s(outcome?.start_date),
     target_date: s(outcome?.target_date),
-    indicator_name: s(outcome?.indicator_name),
+    indicator_name: s(outcome?.indicator_name ?? prefill?.indicator_name),
     indicator_unit: s(outcome?.indicator_unit),
     baseline_value: s(outcome?.baseline_value),
     target_value: s(outcome?.target_value),
@@ -246,17 +272,17 @@ export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const save = useMutation({
-    mutationFn: () => (outcome ? api.put(`/outcomes/${outcome.id}`, f) : api.post('/outcomes', f)),
+    mutationFn: () => (outcome ? api.put(`/outcomes/${outcome.id}`, f) : submit ? submit(f) : api.post('/outcomes', f)),
     onSuccess: async () => {
       await Promise.all(['outcomes', 'outcome', 'epics', 'epic', 'tasks'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
-      onClose();
+      (onSaved ?? onClose)();
     },
   });
   return (
     <Modal
       open
       onClose={onClose}
-      title={outcome ? 'Editar outcome' : 'Novo outcome'}
+      title={title ?? (outcome ? 'Editar outcome' : 'Novo outcome')}
       size="lg"
       footer={
         <>
@@ -264,11 +290,12 @@ export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?
             Cancelar
           </button>
           <button className="btn-primary" form="outcome-form" disabled={save.isPending}>
-            Salvar
+            {submit ? 'Aprovar e criar outcome' : 'Salvar'}
           </button>
         </>
       }
     >
+      {banner}
       <form
         id="outcome-form"
         className="space-y-3"
@@ -297,7 +324,7 @@ export function OutcomeFormModal({ outcome, defaultEpicId, onClose }: { outcome?
           <Field label="Responsável">
             <select className="input" value={f.owner_id} onChange={set('owner_id')}>
               <option value="">—</option>
-              {users?.filter((u) => u.active || String(u.id) === f.owner_id).map((u) => (
+              {users?.filter((u) => (u.active && u.role !== 'requester') || String(u.id) === f.owner_id).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>

@@ -1,4 +1,4 @@
-import type { DeadlineState, PlanStatus, Priority } from './api';
+import type { ConvertType, DeadlineState, PlanStatus, Priority, RequestStatus, Role } from './api';
 
 /**
  * Fuso horário da aplicação. Vem do servidor (/api/config) para que toda a exibição use o mesmo
@@ -125,6 +125,27 @@ export const DEADLINE: Record<DeadlineState, { label: string; cls: string } | nu
   concluida: null,
   cancelada: { label: 'Cancelada', cls: 'bg-slate-200 text-slate-600' },
 };
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: 'Administrador',
+  user: 'Usuário',
+  requester: 'Solicitante',
+};
+
+export const REQUEST_STATUS: Record<RequestStatus, { label: string; cls: string }> = {
+  aguardando: { label: 'Aguardando aprovação', cls: 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20' },
+  info: { label: 'Precisa de mais informação', cls: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20' },
+  aprovada: { label: 'Aprovada', cls: 'bg-green-50 text-green-700 ring-1 ring-green-600/20' },
+  recusada: { label: 'Recusada', cls: 'bg-slate-200 text-slate-600' },
+};
+
+export const CONVERT_LABEL: Record<ConvertType, string> = { task: 'Tarefa', outcome: 'Outcome', epic: 'Épico' };
+
+export function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
 
 export function initials(name: string | null | undefined): string {
   if (!name) return '?';

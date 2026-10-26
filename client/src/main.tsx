@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { EpicDetailPage, EpicsPage } from './pages/EpicsPage';
 import { LoginPage } from './pages/LoginPage';
 import { OutcomeDetailPage, OutcomesPage } from './pages/OutcomesPage';
+import { ApprovalsPage, RequestsPage } from './pages/RequestsPage';
 import { TasksPage } from './pages/TasksPage';
 import { TrashPage } from './pages/TrashPage';
 
@@ -22,6 +23,17 @@ function App() {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <LoginPage />;
+  // Solicitante: acessa somente "Minhas solicitações".
+  if (user.role === 'requester') {
+    return (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="solicitacoes" element={<RequestsPage />} />
+          <Route path="*" element={<Navigate to="/solicitacoes" replace />} />
+        </Route>
+      </Routes>
+    );
+  }
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -32,7 +44,9 @@ function App() {
         <Route path="epicos/:id" element={<EpicDetailPage />} />
         <Route path="outcomes" element={<OutcomesPage />} />
         <Route path="outcomes/:id" element={<OutcomeDetailPage />} />
+        <Route path="solicitacoes" element={<RequestsPage />} />
         <Route path="lixeira" element={<TrashPage />} />
+        {user.role === 'admin' && <Route path="aprovacoes" element={<ApprovalsPage />} />}
         {user.role === 'admin' && <Route path="admin" element={<AdminPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

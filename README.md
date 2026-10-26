@@ -18,9 +18,21 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   filtros por período, responsável, setor, épico e outcome.
 - **Administração** (somente administradores): usuários, setores e status (ordem, cor, padrão, início,
   conclusão, WIP, encerra sem entrega, ativo).
-- **Lixeira**: tarefas excluídas ficam 30 dias e podem ser restauradas por qualquer usuário; depois são
-  removidas automaticamente. Esvaziar a lixeira / excluir definitivamente: somente administradores.
-- Login simples com perfis Administrador e Usuário.
+- **Solicitações de melhoria**: qualquer pessoa envia uma ideia (nome, descrição, benefício, indicador
+  de sucesso, setor, link e até 5 anexos somando 10 MB). O administrador analisa em **Aprovações**:
+  pede mais informação (volta para o solicitante complementar), recusa com motivo ou aprova
+  convertendo em **Tarefa, Outcome ou Épico** com o formulário já preenchido. O item gerado mostra a
+  solicitação de origem e os anexos; o solicitante acompanha o andamento em "Minhas solicitações".
+- **Lixeira**: tarefas excluídas ficam 30 dias e podem ser restauradas por qualquer usuário da equipe;
+  depois são removidas automaticamente. Mover para a lixeira, esvaziar e excluir definitivamente:
+  somente administradores.
+- **Perfis**:
+
+  | Perfil | Pode |
+  |---|---|
+  | Administrador | Tudo: aprovações, lixeira, usuários, setores e status |
+  | Usuário (equipe) | Criar/editar tarefas, outcomes e épicos (sem precisar de solicitação), enviar solicitações, restaurar da lixeira. Não exclui tarefas |
+  | Solicitante | Apenas enviar e acompanhar as próprias solicitações |
 
 Detalhes de arquitetura, modelo de dados, regras e fórmulas: **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**.
 
@@ -44,6 +56,7 @@ Acessos de demonstração:
 | Administrador | admin@empresa.com | admin123 | Administrador |
 | João | joao@empresa.com | 123456 | Administrador |
 | Maria, Pedro, Ana | maria@ / pedro@ / ana@empresa.com | 123456 | Usuário |
+| Carla | carla@empresa.com | 123456 | Solicitante (setor Comercial) |
 
 ## Importar a planilha de demandas (CSV)
 
@@ -79,6 +92,7 @@ Variáveis de ambiente (todas opcionais):
 |---|---|---|
 | `PORT` | `3001` | Porta HTTP |
 | `DB_PATH` | `data/app.db` | Arquivo SQLite (backup = copiar o arquivo) |
+| `UPLOADS_DIR` | `data/uploads` | Anexos das solicitações (inclua no backup junto com o banco; em servidor, use disco persistente) |
 | `APP_TIMEZONE` | `America/Sao_Paulo` | Fuso de negócio para datas, atrasos e períodos |
 | `SESSION_DAYS` | `7` | Validade da sessão |
 | `TRASH_DAYS` | `30` | Dias que uma tarefa excluída fica na lixeira antes da remoção definitiva |

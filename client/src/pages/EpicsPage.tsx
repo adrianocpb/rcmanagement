@@ -6,6 +6,7 @@ import { ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, EmptyState }
 import { api, type Epic, type PlanStatus } from '../lib/api';
 import { PLAN_STATUS, fmtDate, fmtDateOfInstant } from '../lib/format';
 import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
+import { OriginRequestCard } from '../components/Requests';
 import { OutcomeCard, OutcomeFormModal } from './OutcomesPage';
 
 /** Ordena pela data de criação, do mais recente para o mais antigo. */
@@ -117,6 +118,11 @@ export function EpicDetailPage() {
             </div>
             {epic.okr && <p className="text-sm text-slate-600">🎯 {epic.okr}</p>}
             {epic.description && <p className="mt-2 text-sm whitespace-pre-wrap text-slate-600">{epic.description}</p>}
+            {epic.origin_request && (
+              <div className="mt-3">
+                <OriginRequestCard origin={epic.origin_request} />
+              </div>
+            )}
           </div>
           <button className="btn-secondary" onClick={() => setEditing(true)}>
             <Pencil size={14} /> Editar
@@ -164,12 +170,30 @@ export function Info({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-export function EpicFormModal({ epic, onClose }: { epic?: Epic; onClose: () => void }) {
+export function EpicFormModal({
+  epic,
+  onClose,
+  title,
+  banner,
+  prefill,
+  submit,
+  onSaved,
+}: {
+  epic?: Epic;
+  onClose: () => void;
+  title?: string;
+  banner?: React.ReactNode;
+  /** Textos iniciais de um novo épico (ex.: vindos de uma solicitação). */
+  prefill?: { name?: string; description?: string };
+  /** Substitui a criação padrão (ex.: aprovar uma solicitação convertendo-a em épico). */
+  submit?: (body: Record<string, unknown>) => Promise<unknown>;
+  onSaved?: () => void;
+}) {
   const qc = useQueryClient();
   const { data: users } = useUserOptions();
   const [f, setF] = useState({
-    name: epic?.name ?? '',
-    description: epic?.description ?? '',
+    name: epic?.name ?? prefill?.name ?? '',
+    description: epic?.description ?? prefill?.description ?? '',
     okr: epic?.okr ?? '',
     owner_id: epic?.owner_id ? String(epic.owner_id) : '',
     status: epic?.status ?? 'planejado',
@@ -179,28 +203,29 @@ export function EpicFormModal({ epic, onClose }: { epic?: Epic; onClose: () => v
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const save = useMutation({
-    mutationFn: () => (epic ? api.put(`/epics/${epic.id}`, f) : api.post('/epics', f)),
+    mutationFn: () => (epic ? api.put(`/epics/${epic.id}`, f) : submit ? submit(f) : api.post('/epics', f)),
     onSuccess: async () => {
       await Promise.all([qc.invalidateQueries({ queryKey: ['epics'] }), qc.invalidateQueries({ queryKey: ['epic'] })]);
-      onClose();
+      (onSaved ?? onClose)();
     },
   });
   return (
     <Modal
       open
       onClose={onClose}
-      title={epic ? 'Editar épico' : 'Novo épico'}
+      title={title ?? (epic ? 'Editar épico' : 'Novo épico')}
       footer={
         <>
           <button className="btn-secondary" onClick={onClose}>
             Cancelar
           </button>
           <button className="btn-primary" form="epic-form" disabled={save.isPending}>
-            Salvar
+            {submit ? 'Aprovar e criar épico' : 'Salvar'}
           </button>
         </>
       }
     >
+      {banner}
       <form
         id="epic-form"
         className="space-y-3"
@@ -222,7 +247,7 @@ export function EpicFormModal({ epic, onClose }: { epic?: Epic; onClose: () => v
           <Field label="Responsável">
             <select className="input" value={f.owner_id} onChange={set('owner_id')}>
               <option value="">—</option>
-              {users?.filter((u) => u.active || String(u.id) === f.owner_id).map((u) => (
+              {users?.filter((u) => (u.active && u.role !== 'requester') || String(u.id) === f.owner_id).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ErrorText, Field, Modal, PageHeader, Spinner } from '../components/ui';
 import { api, type Role, type Sector, type Status, type User } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { fmtDateTime } from '../lib/format';
+import { ROLE_LABEL, fmtDateTime } from '../lib/format';
 import { useSectors, useStatuses } from '../lib/queries';
 
 type Tab = 'users' | 'sectors' | 'statuses';
@@ -51,6 +51,7 @@ function ActiveBadge({ active }: { active: number | boolean | undefined }) {
 
 function UsersTab() {
   const { data: users, isLoading } = useQuery({ queryKey: ['users', 'admin'], queryFn: () => api.get<User[]>('/users') });
+  const { data: sectors } = useSectors();
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   return (
     <div>
@@ -67,6 +68,7 @@ function UsersTab() {
               <th className="th">Nome</th>
               <th className="th">E-mail</th>
               <th className="th">Perfil</th>
+              <th className="th">Setor</th>
               <th className="th">Situação</th>
               <th className="th">Criado em</th>
               <th className="th" />
@@ -77,7 +79,8 @@ function UsersTab() {
               <tr key={u.id} className="border-b border-slate-100 last:border-0">
                 <td className="td font-medium">{u.name}</td>
                 <td className="td text-slate-600">{u.email}</td>
-                <td className="td">{u.role === 'admin' ? 'Administrador' : 'Usuário'}</td>
+                <td className="td">{ROLE_LABEL[u.role]}</td>
+                <td className="td text-slate-600">{sectors?.find((s) => s.id === u.sector_id)?.name ?? '—'}</td>
                 <td className="td">
                   <ActiveBadge active={u.active} />
                 </td>
@@ -104,6 +107,7 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
     name: user?.name ?? '',
     email: user?.email ?? '',
     role: (user?.role ?? 'user') as Role,
+    sector_id: user?.sector_id ? String(user.sector_id) : '',
     active: user ? !!user.active : true,
     password: '',
   });
@@ -115,6 +119,7 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
     },
   });
   const isMe = user?.id === me?.id;
+  const { data: sectors } = useSectors();
   return (
     <Modal
       open
@@ -148,8 +153,28 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
         </Field>
         <Field label="Perfil">
           <select className="input" value={f.role} disabled={isMe} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
-            <option value="user">Usuário</option>
+            <option value="user">Usuário (equipe)</option>
             <option value="admin">Administrador</option>
+            <option value="requester">Solicitante</option>
+          </select>
+          <span className="mt-1 block text-xs text-slate-500">
+            {f.role === 'admin'
+              ? 'Acesso total, inclusive aprovações, lixeira e administração.'
+              : f.role === 'user'
+                ? 'Cria e edita tarefas, outcomes e épicos e envia solicitações. Não exclui tarefas.'
+                : 'Apenas envia e acompanha as próprias solicitações de melhoria.'}
+          </span>
+        </Field>
+        <Field label="Setor">
+          <select className="input" value={f.sector_id} onChange={(e) => setF({ ...f, sector_id: e.target.value })}>
+            <option value="">—</option>
+            {sectors
+              ?.filter((s) => s.active || String(s.id) === f.sector_id)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
           </select>
         </Field>
         <Field label={user ? 'Nova senha (deixe em branco para manter)' : 'Senha'} required={!user}>

@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth';
 import { PRIORITY, PRIORITY_KEYS, fmtDate, fmtDateTime, fmtNumber, isoToLocalInput, localInputToIso } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
 import { IceBadge, IceFields, IceStrip, type IceKey } from './Ice';
+import { OriginRequestCard } from './Requests';
 import { Avatar, DeadlineBadge, ErrorText, Field, Modal, PriorityBadge, Spinner, StatusPill } from './ui';
 
 /** Invalida tudo o que depende de tarefas. */
@@ -63,6 +64,7 @@ export function TaskModal() {
 }
 
 function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const invalidate = useInvalidateTasks();
   const { data: task, isLoading, error } = useQuery({
@@ -121,16 +123,19 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               <button className="btn-secondary" onClick={() => setEditing(true)}>
                 <Pencil size={14} /> Editar
               </button>
-              <button
-                className="btn-danger"
-                onClick={() => confirm('Mover esta tarefa para a lixeira? Ela poderá ser restaurada por 30 dias.') && delMut.mutate()}
-                title="Mover para a lixeira"
-              >
-                <Trash2 size={14} />
-              </button>
+              {user?.role === 'admin' && (
+                <button
+                  className="btn-danger"
+                  onClick={() => confirm('Mover esta tarefa para a lixeira? Ela poderá ser restaurada por 30 dias.') && delMut.mutate()}
+                  title="Mover para a lixeira"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
           </div>
           <ErrorText error={statusMut.error ?? delMut.error} />
+          <OriginRequestCard origin={task.origin_request} />
 
           <Section title="Informações">
             <p className="text-lg font-semibold text-slate-900">{task.title}</p>
@@ -259,12 +264,12 @@ function Person({ name, id }: { name: string; id: number }) {
 
 type FormState = Record<string, string>;
 
-function toForm(t?: TaskDetail, defaults: Record<string, string | number> = {}): FormState {
+function toForm(t?: TaskDetail, defaults: Record<string, string | number> = {}, prefill: Partial<FormState> = {}): FormState {
   const s = (v: unknown) => (v === null || v === undefined ? '' : String(v));
   return {
-    title: s(t?.title),
-    description: s(t?.description),
-    notes: s(t?.notes),
+    title: s(t?.title ?? prefill.title),
+    description: s(t?.description ?? prefill.description),
+    notes: s(t?.notes ?? prefill.notes),
     sector_id: s(t?.sector_id ?? defaults.sector_id),
     requester_id: s(t?.requester_id ?? defaults.requester_id),
     assignee_id: s(t?.assignee_id ?? defaults.assignee_id),
@@ -283,19 +288,27 @@ function toForm(t?: TaskDetail, defaults: Record<string, string | number> = {}):
   };
 }
 
-function TaskForm({
+export function TaskForm({
   task,
   defaults,
+  prefill,
+  submit,
+  submitLabel,
   onDone,
   onCancel,
 }: {
   task?: TaskDetail;
   defaults?: Record<string, string | number>;
+  /** Textos iniciais de uma nova tarefa (ex.: vindos de uma solicitação). */
+  prefill?: Partial<FormState>;
+  /** Substitui a criação padrão (ex.: aprovar uma solicitação convertendo-a em tarefa). */
+  submit?: (body: Record<string, unknown>) => Promise<unknown>;
+  submitLabel?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const { user } = useAuth();
-  const [f, setF] = useState<FormState>(() => toForm(task, defaults));
+  const [f, setF] = useState<FormState>(() => toForm(task, defaults, prefill));
   const set = (k: string) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const invalidate = useInvalidateTasks();
   const { open } = useTaskModal();
@@ -341,11 +354,12 @@ function TaskForm({
       }
       delete body.started_at;
       delete body.completed_at;
+      if (submit) return submit(body) as Promise<TaskDetail>;
       return api.post<TaskDetail>('/tasks', body);
     },
     onSuccess: async (saved) => {
       await invalidate();
-      if (task) onDone();
+      if (task || submit) onDone();
       else open(saved.id); // após criar, abre o detalhe da nova tarefa
     },
   });
@@ -392,7 +406,9 @@ function TaskForm({
         <Field label="Responsável" required>
           <select className="input" value={f.assignee_id} onChange={set('assignee_id')} required>
             <option value="">Selecione…</option>
-            {activeOrCurrent(users, f.assignee_id).map((u) => (
+            {activeOrCurrent(users, f.assignee_id)
+              .filter((u) => u.role !== 'requester' || String(u.id) === f.assignee_id)
+              .map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
               </option>
@@ -496,7 +512,7 @@ function TaskForm({
           Cancelar
         </button>
         <button type="submit" className="btn-primary" disabled={save.isPending}>
-          {save.isPending ? 'Salvando…' : task ? 'Salvar alterações' : 'Criar tarefa'}
+          {save.isPending ? 'Salvando…' : task ? 'Salvar alterações' : (submitLabel ?? 'Criar tarefa')}
         </button>
       </div>
     </form>

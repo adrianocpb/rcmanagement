@@ -101,11 +101,21 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   cabeçalho), seletor "Ordenar" no Kanban (dentro de cada coluna) e na tela de Outcomes; sempre do
   maior para o menor, com itens não estimados no fim.
 - **Lixeira:** excluir uma tarefa a move para a lixeira (`deleted_at`, `deleted_by`); ela some das listas,
-  do Kanban e dos indicadores. Qualquer usuário pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
+  do Kanban e dos indicadores. Somente administradores movem para a lixeira; a equipe pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
   seu histórico são removidos definitivamente — na subida do servidor, a cada 6 horas e ao abrir a
   lixeira. Esvaziar a lixeira ou excluir um item definitivamente: somente administradores.
-- **Permissões:** Administrador gerencia usuários, setores e status. Todos os usuários criam e editam
-  tarefas, épicos e outcomes.
+- **Permissões (perfis):** `admin` — tudo, inclusive aprovações, lixeira e administração; `user`
+  (equipe) — cria e edita tarefas, épicos e outcomes e envia solicitações, sem excluir;
+  `requester` (Solicitante) — somente `/api/requests` (as próprias) e `/api/sectors`. As rotas da
+  equipe usam o middleware `requireTeam`. Usuários têm um setor opcional (`users.sector_id`).
+- **Solicitações de melhoria** (`server/src/modules/requests/`): tabelas `requests` e
+  `request_attachments`. Situações: `aguardando` → `info` (pedido de complemento; ao editar volta a
+  `aguardando`) → `aprovada` ou `recusada` (motivo obrigatório). Só administradores decidem. A
+  aprovação cria, na mesma transação, uma Tarefa, Outcome ou Épico (reaproveitando `createTask`,
+  `createOutcome`, `createEpic`) e grava `converted_type`/`converted_id`; o detalhe do item traz
+  `origin_request`. Anexos: até 5 por solicitação e 10 MB no total, tipos em lista permitida
+  (imagens, PDF, Office, CSV/TXT, MP4/WEBM/MOV — sem SVG/HTML), gravados em `UPLOADS_DIR/<id>/` com
+  nome aleatório e servidos com verificação de acesso, `nosniff` e CSP restritiva.
 
 ## 6. Indicadores (fórmulas implementadas em `server/src/modules/dashboard/metrics.ts`)
 

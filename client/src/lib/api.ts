@@ -8,11 +8,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const isForm = body instanceof FormData;
   const res = await fetch(`/api${url}`, {
     method,
     credentials: 'same-origin',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : undefined,
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
@@ -29,6 +30,8 @@ export const api = {
   put: <T>(url: string, body?: unknown) => request<T>('PUT', url, body ?? {}),
   patch: <T>(url: string, body?: unknown) => request<T>('PATCH', url, body ?? {}),
   del: <T>(url: string) => request<T>('DELETE', url),
+  /** Envio multipart (formulário com arquivos). */
+  upload: <T>(method: 'POST' | 'PUT', url: string, form: FormData) => request<T>(method, url, form),
 };
 
 /** Monta query string ignorando valores vazios. */
@@ -44,7 +47,8 @@ export function qs(params: Record<string, unknown>): string {
 
 // ---------- Tipos ----------
 
-export type Role = 'admin' | 'user';
+/** admin: tudo · user (equipe): sem administração e sem exclusão · requester: só solicitações. */
+export type Role = 'admin' | 'user' | 'requester';
 export type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
 export type PlanStatus = 'planejado' | 'em_andamento' | 'concluido' | 'cancelado';
 export type DeadlineState =
@@ -61,12 +65,14 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  sector_id: number | null;
   active?: number;
   created_at?: string;
 }
 export interface UserOption {
   id: number;
   name: string;
+  role: Role;
   active: number;
 }
 export interface Sector {
@@ -104,6 +110,8 @@ export interface Epic {
   tasks_done: number;
   /** Data de criação (instante UTC), preenchida automaticamente. */
   created_at: string;
+  /** Apenas no detalhe (GET /epics/:id). */
+  origin_request?: OriginRequest | null;
 }
 export interface Outcome {
   id: number;
@@ -131,6 +139,8 @@ export interface Outcome {
   tasks_done: number;
   /** Data de criação (instante UTC), preenchida automaticamente. */
   created_at: string;
+  /** Apenas no detalhe (GET /outcomes/:id). */
+  origin_request?: OriginRequest | null;
 }
 export interface Task {
   id: number;
@@ -180,6 +190,7 @@ export interface HistoryEntry {
 }
 export interface TaskDetail extends Task {
   history: HistoryEntry[];
+  origin_request?: OriginRequest | null;
 }
 
 export interface Stats {
@@ -202,4 +213,71 @@ export interface DashboardData {
   time_in_status: { status_id: number; name: string; color: string; tasks: number; avg_days: number | null; median_days: number | null }[];
   /** Nomes dos status que contam no WIP. */
   wip_statuses: string[];
+}
+
+// ---------- Solicitações de melhoria ----------
+
+export type RequestStatus = 'aguardando' | 'info' | 'aprovada' | 'recusada';
+export type ConvertType = 'task' | 'outcome' | 'epic';
+
+export interface Attachment {
+  id: number;
+  filename: string;
+  mime_type: string;
+  size: number;
+  url: string;
+}
+/** Andamento do item gerado pela aprovação. */
+export interface ConvertedProgress {
+  type: ConvertType;
+  id: number;
+  removed: boolean;
+  title?: string;
+  // tarefa
+  status_name?: string;
+  status_color?: string;
+  assignee_name?: string;
+  planned_end_date?: string | null;
+  deadline_state?: DeadlineState;
+  // outcome / épico
+  plan_status?: PlanStatus;
+  tasks_count?: number;
+  tasks_done?: number;
+}
+export interface ImprovementRequest {
+  id: number;
+  title: string;
+  description: string;
+  benefit: string;
+  success_indicator: string | null;
+  link: string | null;
+  sector_id: number | null;
+  sector_name: string | null;
+  requester_id: number;
+  requester_name: string;
+  status: RequestStatus;
+  decision_note: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  converted_type: ConvertType | null;
+  converted_id: number | null;
+  attachments_count: number;
+  created_at: string;
+  updated_at: string;
+  converted: ConvertedProgress | null;
+}
+export interface ImprovementRequestDetail extends ImprovementRequest {
+  attachments: Attachment[];
+  can_edit: boolean;
+}
+/** Solicitação que originou uma tarefa, outcome ou épico. */
+export interface OriginRequest {
+  id: number;
+  title: string;
+  benefit: string;
+  success_indicator: string | null;
+  link: string | null;
+  requester_name: string;
+  created_at: string;
+  attachments: Attachment[];
 }
