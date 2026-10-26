@@ -1,4 +1,19 @@
-import { BarChart3, ClipboardCheck, Flag, Inbox, KanbanSquare, LogOut, Menu, Search, Settings, Target, Trash2, X } from 'lucide-react';
+import {
+  BarChart3,
+  ClipboardCheck,
+  Flag,
+  Inbox,
+  KanbanSquare,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Settings,
+  Target,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -20,6 +35,25 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setMenuOpen(false), [location.pathname]);
+  // Menu recolhido (só ícones) em telas grandes; a preferência fica salva no navegador.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('layout.sidebarCollapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem('layout.sidebarCollapsed', c ? '0' : '1');
+      } catch {
+        /* ignora */
+      }
+      return !c;
+    });
+  /** Classes aplicadas só em telas grandes com o menu recolhido (no celular o menu é sempre a gaveta completa). */
+  const whenCollapsed = (cls: string) => (collapsed ? cls : '');
 
   // Solicitante: apenas as próprias solicitações.
   const groups: NavGroup[] = isRequester
@@ -54,29 +88,34 @@ export function Layout() {
     <div className="flex min-h-full">
       {menuOpen && <div className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" onClick={() => setMenuOpen(false)} />}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-white elev-card transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-white elev-card transition-[transform,width] lg:translate-x-0 ${
           menuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${whenCollapsed('lg:w-[78px]')}`}
       >
-        <div className="flex h-16 items-center gap-2.5 px-6">
-          <img src="/logo-rc.png" alt="RC+" className="h-7 w-auto" />
-          <span className="min-w-0 flex-1 truncate text-base font-semibold whitespace-nowrap text-slate-700">Gestão de Melhorias</span>
+        <div className={`flex h-16 items-center gap-2.5 px-6 ${whenCollapsed('lg:justify-center lg:px-2')}`}>
+          <img src="/logo-rc.png" alt="RC+" className={`h-7 w-auto ${whenCollapsed('lg:h-5')}`} />
+          <span className={`min-w-0 flex-1 truncate text-base font-semibold whitespace-nowrap text-slate-700 ${whenCollapsed('lg:hidden')}`}>
+            Gestão de Melhorias
+          </span>
           <button className="btn-ghost -mr-2 p-1.5 lg:hidden" onClick={() => setMenuOpen(false)} aria-label="Fechar menu">
             <X size={18} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3.5 pb-6" aria-label="Menu principal">
+        <nav className={`flex-1 overflow-y-auto px-3.5 pb-6 ${whenCollapsed('lg:px-3')}`} aria-label="Menu principal">
           {groups.map((g) => (
             <div key={g.title}>
-              <div className="px-3 pt-4 pb-1 text-[13px] text-slate-400 uppercase">{g.title}</div>
+              <div className={`px-3 pt-4 pb-1 text-[13px] text-slate-400 uppercase ${whenCollapsed('lg:hidden')}`}>{g.title}</div>
+              {collapsed && <div className="mx-2 my-3 hidden border-t border-slate-200 lg:block" aria-hidden="true" />}
               <div className="flex flex-col gap-1">
                 {g.items.map(({ to, label, icon: Icon, end, badge }) => (
                   <NavLink
                     key={to}
                     to={to}
                     end={end}
+                    title={collapsed ? label : undefined}
+                    aria-label={collapsed ? label : undefined}
                     className={({ isActive }) =>
-                      `flex h-[38px] items-center gap-3 rounded-md px-3 text-[15px] ${
+                      `relative flex h-[38px] items-center gap-3 rounded-md px-3 text-[15px] ${whenCollapsed('lg:justify-center lg:px-0')} ${
                         isActive ? 'bg-blue-600 text-white shadow-[0_2px_6px_0_rgba(115,103,240,0.3)]' : 'text-slate-500 hover:bg-[rgba(47,43,61,0.06)]'
                       }`
                     }
@@ -84,12 +123,12 @@ export function Layout() {
                     {({ isActive }) => (
                       <>
                         <Icon size={20} strokeWidth={1.75} />
-                        <span className="flex-1">{label}</span>
+                        <span className={`flex-1 ${whenCollapsed('lg:hidden')}`}>{label}</span>
                         {!!badge && (
                           <span
                             className={`min-w-5 rounded-full px-1.5 text-center text-xs leading-5 font-medium ${
                               isActive ? 'bg-white text-blue-700' : 'bg-red-500 text-white'
-                            }`}
+                            } ${whenCollapsed('lg:absolute lg:top-0 lg:right-0.5 lg:min-w-4 lg:px-1 lg:text-[10px] lg:leading-4')}`}
                             title={`${badge} aguardando aprovação`}
                           >
                             {badge}
@@ -105,11 +144,19 @@ export function Layout() {
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-[260px]">
+      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] ${collapsed ? 'lg:pl-[78px]' : 'lg:pl-[260px]'}`}>
         <div className="sticky top-0 z-30 bg-slate-50/90 px-4 pt-3 backdrop-blur lg:px-6">
           <header className="flex h-14 items-center gap-3 rounded-md bg-white px-4 elev-card lg:px-6">
             <button className="btn-ghost -ml-2 p-1.5 lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu">
               <Menu size={20} />
+            </button>
+            <button
+              className="btn-ghost -ml-2 hidden p-1.5 lg:inline-flex"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            >
+              {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
             {isRequester ? (
               <span className="hidden truncate text-[15px] text-slate-500 sm:block">Envie ideias de melhoria e acompanhe cada uma.</span>
