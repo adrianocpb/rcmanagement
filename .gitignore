@@ -7,3 +7,4 @@ data/*.db-*
 screenshots/tmp/
 *.tsbuildinfo
 data/backups/
+data/uploads/

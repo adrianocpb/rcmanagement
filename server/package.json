@@ -16,11 +16,13 @@
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "multer": "^2.5.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
     "@types/node": "^26.6.4",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.3.0",

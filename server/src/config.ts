@@ -18,4 +18,6 @@ export const config = {
   /** Dias que uma tarefa excluída fica na lixeira antes de ser removida definitivamente. */
   trashDays: Number(process.env.TRASH_DAYS ?? 30),
   clientDist: path.join(repoRoot, 'client', 'dist'),
+  /** Pasta dos anexos das solicitações (deve ficar em disco persistente e entrar no backup). */
+  uploadsDir: process.env.UPLOADS_DIR ?? path.join(repoRoot, 'data', 'uploads'),
 };

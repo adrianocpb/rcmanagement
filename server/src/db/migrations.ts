@@ -3,7 +3,12 @@
  * schema_migrations. Para evoluir o banco, adicione uma nova entrada ao final — nunca altere
  * uma migration já aplicada.
  */
-export const migrations: { id: string; sql: string }[] = [
+export const migrations: {
+  id: string;
+  sql: string;
+  /** Recria tabelas referenciadas por chaves estrangeiras (procedimento oficial do SQLite). */
+  foreignKeysOff?: boolean;
+}[] = [
   {
     id: '001_initial',
     sql: `
@@ -166,6 +171,69 @@ UPDATE statuses SET counts_in_wip = 0 WHERE is_default = 1 OR is_completion_stat
     sql: `
 ALTER TABLE tasks ADD COLUMN deleted_by INTEGER REFERENCES users(id);
 CREATE INDEX idx_tasks_deleted_at ON tasks(deleted_at);
+`,
+  },
+  {
+    // Perfil "Solicitante" (requester) e setor do usuário. O SQLite não altera CHECK de tabela
+    // existente, então a tabela users é recriada preservando os dados (chaves estrangeiras
+    // desligadas durante a troca e verificadas ao final).
+    id: '006_users_requester_role_and_sector',
+    foreignKeysOff: true,
+    sql: `
+CREATE TABLE users_new (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT    NOT NULL,
+  email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT    NOT NULL,
+  role          TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'requester')),
+  sector_id     INTEGER REFERENCES sectors(id),
+  active        INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT    NOT NULL,
+  updated_at    TEXT    NOT NULL
+);
+INSERT INTO users_new (id, name, email, password_hash, role, active, created_at, updated_at)
+  SELECT id, name, email, password_hash, role, active, created_at, updated_at FROM users;
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
+`,
+  },
+  {
+    // Solicitações de melhoria (porta de entrada) e seus anexos.
+    id: '007_improvement_requests',
+    sql: `
+CREATE TABLE requests (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  title             TEXT    NOT NULL,
+  description       TEXT    NOT NULL,
+  benefit           TEXT    NOT NULL,               -- como melhora o dia a dia / a empresa
+  success_indicator TEXT,                           -- como saberemos que deu certo
+  link              TEXT,
+  sector_id         INTEGER REFERENCES sectors(id),
+  requester_id      INTEGER NOT NULL REFERENCES users(id),
+  status            TEXT    NOT NULL DEFAULT 'aguardando'
+                    CHECK (status IN ('aguardando', 'info', 'aprovada', 'recusada')),
+  decision_note     TEXT,                           -- motivo da recusa / informação pedida
+  decided_by        INTEGER REFERENCES users(id),
+  decided_at        TEXT,
+  converted_type    TEXT CHECK (converted_type IN ('task', 'outcome', 'epic')),
+  converted_id      INTEGER,
+  created_at        TEXT    NOT NULL,
+  updated_at        TEXT    NOT NULL
+);
+CREATE INDEX idx_requests_status    ON requests(status);
+CREATE INDEX idx_requests_requester ON requests(requester_id);
+CREATE INDEX idx_requests_converted ON requests(converted_type, converted_id);
+
+CREATE TABLE request_attachments (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id   INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+  filename     TEXT    NOT NULL,   -- nome original
+  stored_name  TEXT    NOT NULL,   -- nome no disco (aleatório)
+  mime_type    TEXT    NOT NULL,
+  size         INTEGER NOT NULL,
+  created_at   TEXT    NOT NULL
+);
+CREATE INDEX idx_request_attachments_request ON request_attachments(request_id);
 `,
   },
 ];

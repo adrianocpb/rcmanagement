@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
 import { idParam, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
@@ -30,6 +31,19 @@ const EPIC_SELECT = `
            WHERE t.epic_id = e.id AND t.deleted_at IS NULL AND s.is_completion_status = 1) AS tasks_done
     FROM epics e LEFT JOIN users u ON u.id = e.owner_id`;
 
+/** Cria um épico (usado pelo cadastro e pela aprovação de solicitações). */
+export function createEpic(db: DB, input: unknown) {
+  const d = schema.parse(input);
+  const now = nowIso();
+  const info = db
+    .prepare(
+      `INSERT INTO epics (name, description, okr, owner_id, status, start_date, end_date, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(d.name, d.description, d.okr, d.owner_id, d.status, d.start_date, d.end_date, +d.active, now, now);
+  return db.prepare(`${EPIC_SELECT} WHERE e.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
+}
+
 export function epicsRouter(db: DB) {
   const r = Router();
 
@@ -44,19 +58,11 @@ export function epicsRouter(db: DB) {
     const id = idParam(req);
     const epic = db.prepare(`${EPIC_SELECT} WHERE e.id = ?`).get(id);
     if (!epic) throw notFound('Épico');
-    res.json(epic);
+    res.json({ ...epic, origin_request: originOf(db, 'epic', id) });
   });
 
   r.post('/', (req, res) => {
-    const d = schema.parse(req.body);
-    const now = nowIso();
-    const info = db
-      .prepare(
-        `INSERT INTO epics (name, description, okr, owner_id, status, start_date, end_date, active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(d.name, d.description, d.okr, d.owner_id, d.status, d.start_date, d.end_date, +d.active, now, now);
-    res.status(201).json(db.prepare(`${EPIC_SELECT} WHERE e.id = ?`).get(info.lastInsertRowid));
+    res.status(201).json(createEpic(db, req.body));
   });
 
   r.put('/:id', (req, res) => {

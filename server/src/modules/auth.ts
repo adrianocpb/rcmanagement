@@ -12,7 +12,7 @@ export function authRouter(db: DB) {
       .object({ email: z.string().trim().toLowerCase(), password: z.string() })
       .parse(req.body);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as
-      | { id: number; name: string; email: string; role: string; active: number; password_hash: string }
+      | { id: number; name: string; email: string; role: string; sector_id: number | null; active: number; password_hash: string }
       | undefined;
     if (!user || !user.active || !checkPassword(password, user.password_hash)) {
       throw new HttpError(401, 'E-mail ou senha inválidos.');
@@ -24,7 +24,7 @@ export function authRouter(db: DB) {
       secure: process.env.COOKIE_SECURE === 'true', // ative ao servir via HTTPS
       expires: expiresAt,
     });
-    res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, sector_id: user.sector_id });
   });
 
   r.post('/logout', (req, res) => {

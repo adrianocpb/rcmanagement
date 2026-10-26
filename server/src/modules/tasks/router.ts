@@ -18,6 +18,7 @@ import {
   restoreTask,
   updateTask,
 } from './service.js';
+import { originOf } from '../requests/service.js';
 
 const qId = z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().int().positive().optional());
 const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(isValidDate).optional());
@@ -69,7 +70,8 @@ export function tasksRouter(db: DB) {
   });
 
   r.get('/:id', (req, res) => {
-    res.json(getTask(db, idParam(req)));
+    const id = idParam(req);
+    res.json({ ...getTask(db, id), origin_request: originOf(db, 'task', id) });
   });
 
   r.post('/', (req, res) => {
@@ -86,7 +88,8 @@ export function tasksRouter(db: DB) {
     res.json(changeStatus(db, idParam(req), status_id, req.user!.id));
   });
 
-  r.delete('/:id', (req, res) => {
+  // Mover para a lixeira: somente administradores.
+  r.delete('/:id', requireAdmin, (req, res) => {
     deleteTask(db, idParam(req), req.user!.id);
     res.status(204).end();
   });

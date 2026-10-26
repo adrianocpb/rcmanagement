@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
 import { badRequest, idParam, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
@@ -44,6 +45,30 @@ const OUTCOME_SELECT = `
     JOIN epics e ON e.id = o.epic_id
     LEFT JOIN users u ON u.id = o.owner_id`;
 
+function assertEpic(db: DB, id: number) {
+  if (!db.prepare('SELECT id FROM epics WHERE id = ?').get(id)) throw badRequest('Épico inválido.');
+}
+
+/** Cria um outcome (usado pelo cadastro e pela aprovação de solicitações). */
+export function createOutcome(db: DB, input: unknown) {
+  const d = schema.parse(input);
+  assertEpic(db, d.epic_id);
+  const now = nowIso();
+  const info = db
+    .prepare(
+      `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
+                             indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
+                             ice_ease, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
+      d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
+      d.ice_ease, +d.active, now, now,
+    );
+  return db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
+}
+
 export function outcomesRouter(db: DB) {
   const r = Router();
 
@@ -63,32 +88,16 @@ export function outcomesRouter(db: DB) {
   });
 
   r.get('/:id', (req, res) => {
-    const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(idParam(req));
+    const id = idParam(req);
+    const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id);
     if (!outcome) throw notFound('Outcome');
-    res.json(outcome);
+    res.json({ ...outcome, origin_request: originOf(db, 'outcome', id) });
   });
 
-  const ensureEpic = (id: number) => {
-    if (!db.prepare('SELECT id FROM epics WHERE id = ?').get(id)) throw badRequest('Épico inválido.');
-  };
+  const ensureEpic = (id: number) => assertEpic(db, id);
 
   r.post('/', (req, res) => {
-    const d = schema.parse(req.body);
-    ensureEpic(d.epic_id);
-    const now = nowIso();
-    const info = db
-      .prepare(
-        `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
-                               indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
-                               ice_ease, active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
-        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
-        d.ice_ease, +d.active, now, now,
-      );
-    res.status(201).json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid));
+    res.status(201).json(createOutcome(db, req.body));
   });
 
   r.put('/:id', (req, res) => {

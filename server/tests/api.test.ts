@@ -147,12 +147,12 @@ describe('administração', () => {
   it('cria e desativa usuário e setor', async () => {
     const u = await ctx.agent
       .post('/api/users')
-      .send({ name: 'Carla', email: 'carla@empresa.com', password: 'abcdef', role: 'user' })
+      .send({ name: 'Bruna', email: 'bruna@empresa.com', password: 'abcdef', role: 'user' })
       .expect(201);
     expect(u.body.password_hash).toBeUndefined();
     await ctx.agent.put(`/api/users/${u.body.id}`).send({ active: false }).expect(200);
     const { default: request } = await import('supertest');
-    await request(ctx.app).post('/api/auth/login').send({ email: 'carla@empresa.com', password: 'abcdef' }).expect(401);
+    await request(ctx.app).post('/api/auth/login').send({ email: 'bruna@empresa.com', password: 'abcdef' }).expect(401);
     const s = await ctx.agent.post('/api/sectors').send({ name: 'Marketing' }).expect(201);
     await ctx.agent.put(`/api/sectors/${s.body.id}`).send({ active: false }).expect(200);
     await ctx.agent.post('/api/sectors').send({ name: 'marketing' }).expect(409);
@@ -328,7 +328,7 @@ describe('status "encerra sem entrega"', () => {
 describe('lixeira', () => {
   async function trashed() {
     const { body } = await ctx.agent.post('/api/tasks').send(baseTask).expect(201);
-    await ctx.userAgent.delete(`/api/tasks/${body.id}`).expect(204);
+    await ctx.agent.delete(`/api/tasks/${body.id}`).expect(204);
     return body.id as number;
   }
 
@@ -339,7 +339,7 @@ describe('lixeira', () => {
     const trash = (await ctx.userAgent.get('/api/tasks/trash').expect(200)).body;
     expect(trash.days).toBe(30);
     const item = trash.items.find((t: { id: number }) => t.id === id);
-    expect(item.deleted_by_name).toBe('Maria');
+    expect(item.deleted_by_name).toBe('Administrador');
     expect(item.days_left).toBe(30);
   });
 

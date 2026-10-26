@@ -11,7 +11,9 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  /** admin: tudo · user (equipe): tudo exceto administração e exclusão · requester: só solicitações. */
+  role: 'admin' | 'user' | 'requester';
+  sector_id: number | null;
 }
 
 declare module 'express-serve-static-core' {
@@ -38,7 +40,7 @@ export function createSession(db: DB, userId: number): { token: string; expiresA
 
 export function sessionMiddleware(db: DB) {
   const stmt = db.prepare(`
-    SELECT u.id, u.name, u.email, u.role
+    SELECT u.id, u.name, u.email, u.role, u.sector_id
       FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token = ? AND s.expires_at > ? AND u.active = 1`);
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -53,6 +55,13 @@ export function sessionMiddleware(db: DB) {
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) return next(new HttpError(401, 'Não autenticado.'));
+  next();
+}
+
+/** Equipe (administradores e usuários): bloqueia o perfil Solicitante. */
+export function requireTeam(req: Request, _res: Response, next: NextFunction) {
+  if (!req.user) return next(new HttpError(401, 'Não autenticado.'));
+  if (req.user.role === 'requester') return next(new HttpError(403, 'Acesso restrito à equipe.'));
   next();
 }
 

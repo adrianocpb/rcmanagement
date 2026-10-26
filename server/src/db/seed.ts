@@ -51,6 +51,7 @@ export function seedDemo(db: DB, now = new Date()) {
     ['Maria', 'maria@empresa.com', 'user'],
     ['Pedro', 'pedro@empresa.com', 'user'],
     ['Ana', 'ana@empresa.com', 'user'],
+    ['Carla', 'carla@empresa.com', 'requester'],
   ] as const) {
     users[name] = Number(insertUser.run(name, email, userPass, role, created, created).lastInsertRowid);
   }
@@ -62,6 +63,7 @@ export function seedDemo(db: DB, now = new Date()) {
         .lastInsertRowid,
     );
   }
+  db.prepare('UPDATE users SET sector_id = ? WHERE id = ?').run(sectors['Comercial'], users.Carla);
 
   const statuses: Record<StatusKey, number> = {} as Record<StatusKey, number>;
   const statusDefs: [StatusKey, string, string, number, number, number][] = [
@@ -224,6 +226,43 @@ export function seedDemo(db: DB, now = new Date()) {
     [O.onb, 5, 8, 9],
   ].forEach(([name, i, c, e]) => setOutcomeIce.run(i, c, e, outcomes[name as string].id));
 
+  // Solicitações de melhoria de demonstração (perfil Solicitante: Carla).
+  const insertRequest = db.prepare(
+    `INSERT INTO requests (title, description, benefit, success_indicator, sector_id, requester_id, status, decision_note,
+                           decided_by, decided_at, converted_type, converted_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const reqAt = (ago: number) => at(addDays(today, -ago), 9);
+  const approvedTask = db.prepare('SELECT id FROM tasks WHERE title = ?').get('Pipeline de propostas comerciais') as { id: number };
+  insertRequest.run(
+    'Pipeline de propostas comerciais',
+    'Hoje as propostas ficam em planilhas separadas por vendedor.',
+    'Visão única das propostas em aberto e menos retrabalho na cobrança de retorno.',
+    'Tempo médio de resposta ao cliente',
+    sectors['Comercial'], users.Carla, 'aprovada', null, users.Admin, reqAt(28), 'task', approvedTask.id, reqAt(30), reqAt(28),
+  );
+  insertRequest.run(
+    'Alerta de clientes sem contato há 60 dias',
+    'Receber uma lista semanal dos clientes da carteira sem nenhum contato registrado nos últimos 60 dias.',
+    'Reduz a perda de clientes por falta de acompanhamento.',
+    'Taxa de churn da carteira',
+    sectors['Comercial'], users.Carla, 'aguardando', null, null, null, null, null, reqAt(3), reqAt(3),
+  );
+  insertRequest.run(
+    'Tabela de preços no celular',
+    'Consultar a tabela de preços atualizada pelo celular durante visitas.',
+    'Agiliza a negociação em campo.',
+    null,
+    sectors['Comercial'], users.Carla, 'info', 'Quais produtos precisam aparecer? Todos ou só a linha principal?', users.Admin, reqAt(5), null, null, reqAt(8), reqAt(5),
+  );
+  insertRequest.run(
+    'Trocar o ERP',
+    'Substituir o ERP atual por outro sistema.',
+    'Sistema mais moderno.',
+    null,
+    sectors['Comercial'], users.Carla, 'recusada', 'Fora do escopo da área de melhorias; decisão da Diretoria para 2027.', users.Admin, reqAt(15), null, null, reqAt(20), reqAt(15),
+  );
+
   return { tasks: tasks.length };
 }
 
@@ -234,5 +273,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   migrate(db);
   const result = db.transaction(() => seedDemo(db))();
   console.log(`Seed concluído: ${result.tasks} tarefas em ${config.dbPath}`);
-  console.log('Login: admin@empresa.com / admin123  (demais usuários: joao|maria|pedro|ana@empresa.com / 123456)');
+  console.log('Login: admin@empresa.com / admin123  (demais usuários: joao|maria|pedro|ana|carla@empresa.com / 123456)');
 }

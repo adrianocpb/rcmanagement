@@ -103,10 +103,20 @@ export function migrate(db: DB): string[] {
   const done: string[] = [];
   for (const m of migrations) {
     if (applied.has(m.id)) continue;
-    db.transaction(() => {
-      db.exec(m.sql);
-      db.prepare('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)').run(m.id, new Date().toISOString());
-    })();
+    // PRAGMA foreign_keys só tem efeito fora de transação.
+    if (m.foreignKeysOff) db.exec('PRAGMA foreign_keys = OFF');
+    try {
+      db.transaction(() => {
+        db.exec(m.sql);
+        if (m.foreignKeysOff) {
+          const broken = db.prepare('PRAGMA foreign_key_check').all();
+          if (broken.length) throw new Error(`Migration ${m.id}: chaves estrangeiras inválidas após a troca.`);
+        }
+        db.prepare('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)').run(m.id, new Date().toISOString());
+      })();
+    } finally {
+      if (m.foreignKeysOff) db.exec('PRAGMA foreign_keys = ON');
+    }
     done.push(m.id);
   }
   return done;
