@@ -1,7 +1,7 @@
 # Configuração do Fly.io. Antes do primeiro deploy, troque "app" por um nome único seu
 # (vira o endereço: https://<nome>.fly.dev). Passo a passo: docs/PUBLICAR-FLY.md
 
-app = "gestao-melhorias-rc"
+app = "rcinovacao"
 primary_region = "gru"  # São Paulo
 
 [build]

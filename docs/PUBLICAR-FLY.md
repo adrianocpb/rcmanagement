@@ -1,6 +1,6 @@
 # Publicar na web com o Fly.io (teste)
 
-Resultado: o sistema fica em `https://<nome-que-voce-escolher>.fly.dev`, com HTTPS, servidor em
+Resultado: o sistema fica em `https://<nome-que-voce-escolher>.fly.dev` (o nosso: `https://rcinovacao.fly.dev`), com HTTPS, servidor em
 São Paulo e um disco permanente para o banco, os anexos e os backups.
 
 Custo estimado para teste: poucos dólares por mês (uma máquina pequena que desliga sozinha quando
