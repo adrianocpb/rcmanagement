@@ -1,0 +1,41 @@
+# Configuração do Fly.io. Antes do primeiro deploy, troque "app" por um nome único seu
+# (vira o endereço: https://<nome>.fly.dev). Passo a passo: docs/PUBLICAR-FLY.md
+
+app = "gestao-melhorias-rc"
+primary_region = "gru"  # São Paulo
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+  APP_TIMEZONE = "America/Sao_Paulo"
+  DB_PATH = "/data/app.db"
+  UPLOADS_DIR = "/data/uploads"
+  COOKIE_SECURE = "true"
+  TRUST_PROXY = "true"
+
+# Disco permanente: banco, anexos e backups ficam aqui e sobrevivem a cada atualização.
+[mounts]
+  source = "dados"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Para economizar: a máquina desliga sozinha sem acessos e liga no próximo (alguns segundos).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

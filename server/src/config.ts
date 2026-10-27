@@ -20,4 +20,11 @@ export const config = {
   clientDist: path.join(repoRoot, 'client', 'dist'),
   /** Pasta dos anexos das solicitações (deve ficar em disco persistente e entrar no backup). */
   uploadsDir: process.env.UPLOADS_DIR ?? path.join(repoRoot, 'data', 'uploads'),
+  /** Servindo via HTTPS (produção): cookie de sessão só trafega criptografado e o navegador força HTTPS. */
+  cookieSecure: process.env.COOKIE_SECURE === 'true',
+  /** Atrás de um proxy (Fly.io, Railway, Nginx): usa o IP real do visitante (limite de tentativas de login). */
+  trustProxy: process.env.TRUST_PROXY === 'true',
+  /** Cópias diárias do banco (pasta e quantas manter). Vazio = ao lado do banco, em backups/. */
+  backupDir: process.env.BACKUP_DIR ?? '',
+  backupKeep: Number(process.env.BACKUP_KEEP ?? 7),
 };

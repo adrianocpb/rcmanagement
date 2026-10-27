@@ -77,6 +77,11 @@ npm run importar -- caminho\planilha.csv             # importa de fato
 - Regras de conversão (status, setores, títulos, observações etc.) documentadas no início de
   `server/src/db/import-csv.ts`.
 
+## Publicar na web (teste)
+
+Passo a passo para publicar no Fly.io, com endereço `https://<nome>.fly.dev`, HTTPS e disco
+permanente: **[docs/PUBLICAR-FLY.md](docs/PUBLICAR-FLY.md)**.
+
 ## Produção
 
 ```bash
@@ -101,6 +106,9 @@ Variáveis de ambiente (todas opcionais):
 | `TRASH_DAYS` | `30` | Dias que uma tarefa excluída fica na lixeira antes da remoção definitiva |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | Administrador inicial em banco vazio |
 | `COOKIE_SECURE` | `false` | Use `true` ao servir via HTTPS |
+| `TRUST_PROXY` | `false` | Use `true` atrás de um proxy (Fly.io, Railway, Nginx) |
+| `BACKUP_DIR` | `backups/` ao lado do banco | Pasta das cópias diárias do banco |
+| `BACKUP_KEEP` | `7` | Quantas cópias diárias manter |
 
 ## Testes
 

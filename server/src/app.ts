@@ -6,6 +6,7 @@ import { config } from './config.js';
 import type { DB } from './db/connection.js';
 import { requireAuth, requireTeam, sessionMiddleware } from './lib/auth.js';
 import { errorHandler, HttpError } from './lib/http.js';
+import { securityHeaders } from './lib/security.js';
 import { todayLocal } from './lib/time.js';
 import { authRouter } from './modules/auth.js';
 import { dashboardRouter } from './modules/dashboard/router.js';
@@ -19,6 +20,9 @@ import { usersRouter } from './modules/users.js';
 
 export function createApp(db: DB) {
   const app = express();
+  app.disable('x-powered-by');
+  if (config.trustProxy) app.set('trust proxy', 1);
+  app.use(securityHeaders);
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(sessionMiddleware(db));
