@@ -66,7 +66,7 @@ export function ConvertedProgressView({ progress, linkable }: { progress: Conver
     <div className="space-y-1.5 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         {linkable ? (
-          <Link to={itemPath(progress)} className="font-medium text-blue-700 hover:underline">
+          <Link to={itemPath(progress)} className="font-medium text-slate-900 underline underline-offset-2 hover:text-slate-500">
             {label}
           </Link>
         ) : (
@@ -127,7 +127,7 @@ export function OriginRequestCard({ origin }: { origin: OriginRequest | null | u
 
 export function RequestLink({ href }: { href: string }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-blue-700 hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-slate-900 underline underline-offset-2 hover:text-slate-500">
       <ExternalLink size={13} /> {href}
     </a>
   );

@@ -92,7 +92,7 @@ export function TasksPage() {
                   aria-selected={prefs.view === key}
                   onClick={() => setPrefs((p) => ({ ...p, view: key }))}
                   className={`inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium ${
-                    prefs.view === key ? 'bg-blue-600 text-white shadow-[0_2px_6px_0_rgba(115,103,240,0.3)]' : 'text-slate-600 hover:bg-[rgba(47,43,61,0.06)]'
+                    prefs.view === key ? 'bg-blue-600 text-[#eff0eb] shadow-[0_2px_6px_0_rgba(14,14,14,0.24)]' : 'text-slate-600 hover:bg-[rgba(14,14,14,0.05)]'
                   }`}
                 >
                   <Icon size={14} /> {label}

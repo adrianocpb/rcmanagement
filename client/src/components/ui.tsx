@@ -74,7 +74,7 @@ export function DeadlineBadge({ state }: { state: DeadlineState }) {
 
 export function StatusPill({ name, color }: { name: string; color: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded bg-[rgba(128,131,144,0.16)] px-2 py-0.5 text-xs font-medium whitespace-nowrap text-slate-700">
+    <span className="inline-flex items-center gap-1.5 rounded bg-[rgba(107,107,102,0.16)] px-2 py-0.5 text-xs font-medium whitespace-nowrap text-slate-700">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {name}
     </span>
@@ -88,7 +88,7 @@ const AVATAR_COLORS = [
   'bg-amber-50 text-amber-800',
   'bg-red-50 text-red-700',
   'bg-sky-50 text-sky-700',
-  'bg-[rgba(128,131,144,0.16)] text-slate-600',
+  'bg-[rgba(107,107,102,0.16)] text-slate-600',
 ];
 export function Avatar({ name, id, size = 'sm' }: { name: string | null; id?: number | null; size?: 'sm' | 'md' }) {
   const color = AVATAR_COLORS[(id ?? 0) % AVATAR_COLORS.length];

@@ -147,7 +147,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
             <Section title="Relacionamentos">
               <Row label="Épico">
                 {task.epic_id ? (
-                  <Link className="text-blue-700 hover:underline" to={`/epicos/${task.epic_id}`}>
+                  <Link className="text-slate-900 underline underline-offset-2 hover:text-slate-500" to={`/epicos/${task.epic_id}`}>
                     {task.epic_name}
                   </Link>
                 ) : (
@@ -156,7 +156,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               </Row>
               <Row label="Outcome">
                 {task.outcome_id ? (
-                  <Link className="text-blue-700 hover:underline" to={`/outcomes/${task.outcome_id}`}>
+                  <Link className="text-slate-900 underline underline-offset-2 hover:text-slate-500" to={`/outcomes/${task.outcome_id}`}>
                     {task.outcome_name}
                   </Link>
                 ) : (

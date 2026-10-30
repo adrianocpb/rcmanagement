@@ -177,7 +177,7 @@ export function OutcomeDetailPage() {
               </div>
               <p className="text-sm text-slate-500">
                 Épico:{' '}
-                <Link to={`/epicos/${o.epic_id}`} className="text-blue-700 hover:underline">
+                <Link to={`/epicos/${o.epic_id}`} className="text-slate-900 underline underline-offset-2 hover:text-slate-500">
                   {o.epic_name}
                 </Link>
               </p>

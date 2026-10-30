@@ -105,15 +105,15 @@ export const PRIORITY: Record<Priority, { label: string; cls: string; dot: strin
   urgente: { label: 'Urgente', cls: 'bg-red-50 text-red-700', dot: 'bg-red-500', order: 0 },
   alta: { label: 'Alta', cls: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500', order: 1 },
   media: { label: 'Média', cls: 'bg-sky-50 text-sky-700', dot: 'bg-sky-500', order: 2 },
-  baixa: { label: 'Baixa', cls: 'bg-[rgba(128,131,144,0.16)] text-slate-600', dot: 'bg-slate-400', order: 3 },
+  baixa: { label: 'Baixa', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600', dot: 'bg-slate-400', order: 3 },
 };
 export const PRIORITY_KEYS: Priority[] = ['urgente', 'alta', 'media', 'baixa'];
 
 export const PLAN_STATUS: Record<PlanStatus, { label: string; cls: string }> = {
-  planejado: { label: 'Planejado', cls: 'bg-[rgba(128,131,144,0.16)] text-slate-600' },
+  planejado: { label: 'Planejado', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600' },
   em_andamento: { label: 'Em andamento', cls: 'bg-blue-50 text-blue-700' },
   concluido: { label: 'Concluído', cls: 'bg-green-50 text-green-700' },
-  cancelado: { label: 'Cancelado', cls: 'bg-[rgba(128,131,144,0.16)] text-slate-600 line-through' },
+  cancelado: { label: 'Cancelado', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600 line-through' },
 };
 
 export const DEADLINE: Record<DeadlineState, { label: string; cls: string } | null> = {
@@ -123,7 +123,7 @@ export const DEADLINE: Record<DeadlineState, { label: string; cls: string } | nu
   concluida_no_prazo: { label: 'No prazo', cls: 'bg-green-50 text-green-700' },
   concluida_com_atraso: { label: 'Concluída c/ atraso', cls: 'bg-amber-50 text-amber-800' },
   concluida: null,
-  cancelada: { label: 'Cancelada', cls: 'bg-[rgba(128,131,144,0.16)] text-slate-600' },
+  cancelada: { label: 'Cancelada', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600' },
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -136,7 +136,7 @@ export const REQUEST_STATUS: Record<RequestStatus, { label: string; cls: string 
   aguardando: { label: 'Aguardando aprovação', cls: 'bg-amber-50 text-amber-800' },
   info: { label: 'Precisa de mais informação', cls: 'bg-sky-50 text-sky-700' },
   aprovada: { label: 'Aprovada', cls: 'bg-green-50 text-green-700' },
-  recusada: { label: 'Recusada', cls: 'bg-[rgba(128,131,144,0.16)] text-slate-600' },
+  recusada: { label: 'Recusada', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600' },
 };
 
 export const CONVERT_LABEL: Record<ConvertType, string> = { task: 'Tarefa', outcome: 'Outcome', epic: 'Épico' };

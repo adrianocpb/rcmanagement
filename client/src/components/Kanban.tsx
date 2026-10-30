@@ -131,7 +131,7 @@ function Column({
         <h2 className="truncate text-[13px] font-medium tracking-[0.2px] text-slate-700 uppercase" title={status.name}>
           {status.name}
         </h2>
-        <span className="shrink-0 rounded bg-[rgba(128,131,144,0.16)] px-1.5 text-xs font-medium text-slate-600">{tasks.length}</span>
+        <span className="shrink-0 rounded bg-[rgba(107,107,102,0.16)] px-1.5 text-xs font-medium text-slate-600">{tasks.length}</span>
         {overdue > 0 && (
           <span
             className="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-50 px-1.5 text-xs font-medium text-red-700"
@@ -184,7 +184,7 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={task.priority} />
         <IceBadge score={task.ice_score} compact />
-        <span className="rounded bg-[rgba(128,131,144,0.16)] px-1.5 py-0.5 text-xs text-slate-600">{task.sector_name}</span>
+        <span className="rounded bg-[rgba(107,107,102,0.16)] px-1.5 py-0.5 text-xs text-slate-600">{task.sector_name}</span>
         {(task.deadline_state === 'atrasada' ||
           task.deadline_state === 'concluida_com_atraso' ||
           task.deadline_state === 'cancelada') && (

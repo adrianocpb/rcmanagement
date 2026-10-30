@@ -34,8 +34,9 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   | Usuário (equipe) | Criar/editar tarefas, outcomes e épicos (sem precisar de solicitação), enviar solicitações, restaurar da lixeira. Não exclui tarefas |
   | Solicitante | Apenas enviar e acompanhar as próprias solicitações |
 
-Visual: segue o design system **RC+ apps** (violeta como cor de marca, Public Sans, menu lateral e cartões
-brancos com sombra leve). Os tokens ficam em `client/src/index.css`.
+Visual: segue o design system **RC+ apps** (monocromático: preto RC+ como cor de ação sobre o papel RC+,
+Public Sans, menu lateral e cartões brancos com sombra leve). Os tokens ficam em `client/src/index.css`.
+O login usa o fundo ilustrado "Gestão de Melhorias · B — Ciclo de melhoria" (`client/public/login-melhorias.svg`).
 
 Detalhes de arquitetura, modelo de dados, regras e fórmulas: **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**.
 

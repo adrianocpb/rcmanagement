@@ -20,14 +20,14 @@ import { api, qs, type DashboardData } from '../lib/api';
 import { addDays, fmtDate, fmtDays, fmtShortDate, todayLocal } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useUserOptions } from '../lib/queries';
 
-// Cores do design system RC+ apps: série principal primary, segunda série info, grade em border.
+// Cores do design system RC+ apps (monocromático): série principal em preto, contexto em cinza, grade em border.
 const C = {
-  created: '#7367f0',
-  completed: '#00bad1',
-  avg: '#7367f0',
-  aging: ['#c7c2f9', '#aaa2f6', '#7367f0', '#3f378c'],
-  grid: '#e6e6e8',
-  axis: '#6d6b77',
+  created: '#a3a39d',
+  completed: '#0e0e0e',
+  avg: '#0e0e0e',
+  aging: ['#d6d6d0', '#a3a39d', '#5c5c58', '#0e0e0e'],
+  grid: '#d6d6d0',
+  axis: '#5c5c58',
 };
 
 type Preset = 'week' | 'month' | '30' | '90' | '180' | 'custom';
@@ -188,7 +188,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={{ stroke: C.grid }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={(v) => <span style={{ color: C.axis }}>{v}</span>} />
               <Bar dataKey="created" name="Criadas" fill={C.created} radius={[4, 4, 0, 0]} maxBarSize={22} />
               <Bar dataKey="completed" name="Concluídas" fill={C.completed} radius={[4, 4, 0, 0]} maxBarSize={22} />
             </BarChart>
@@ -237,7 +237,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
             <ResponsiveContainer width="100%" height={Math.max(140, data.time_in_status.length * 44)}>
               <BarChart data={data.time_in_status} layout="vertical" margin={{ top: 0, right: 56, left: 8, bottom: 0 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12, fill: '#444050' }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<TimeInStatusTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
                 <Bar
                   dataKey="avg_days"
@@ -245,7 +245,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
                   radius={[0, 4, 4, 0]}
                   maxBarSize={22}
                   isAnimationActive={false}
-                  label={{ position: 'right', fontSize: 12, fill: '#444050', formatter: (v: unknown) => fmtDays(v as number) }}
+                  label={{ position: 'right', fontSize: 12, fill: '#2e2e2c', formatter: (v: unknown) => fmtDays(v as number) }}
                 >
                   {data.time_in_status.map((s) => (
                     <Cell key={s.status_id} fill={s.color} />
@@ -262,9 +262,9 @@ function DashboardBody({ data }: { data: DashboardData }) {
           <ResponsiveContainer width="100%" height={Math.max(160, data.status_distribution.length * 40)}>
             <BarChart data={data.status_distribution} layout="vertical" margin={{ top: 0, right: 32, left: 8, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12, fill: '#444050' }} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
-              <Bar dataKey="count" name="Tarefas" radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: 'right', fontSize: 12, fill: '#444050' }}>
+              <Bar dataKey="count" name="Tarefas" radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: 'right', fontSize: 12, fill: '#2e2e2c' }}>
                 {data.status_distribution.map((s) => (
                   <Cell key={s.status_id} fill={s.color} />
                 ))}
@@ -280,7 +280,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
               <XAxis dataKey="label" tick={{ fontSize: 12, fill: C.axis }} tickLine={false} axisLine={{ stroke: C.grid }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
-              <Bar dataKey="count" name="Tarefas" radius={[4, 4, 0, 0]} maxBarSize={56} label={{ position: 'top', fontSize: 12, fill: '#444050' }}>
+              <Bar dataKey="count" name="Tarefas" radius={[4, 4, 0, 0]} maxBarSize={56} label={{ position: 'top', fontSize: 12, fill: '#2e2e2c' }}>
                 {data.aging.map((a, i) => (
                   <Cell key={a.key} fill={C.aging[i]} />
                 ))}

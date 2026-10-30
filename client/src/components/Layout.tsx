@@ -96,7 +96,7 @@ export function Layout() {
         } ${whenCollapsed('md:w-[78px]')}`}
       >
         <div className={`flex h-16 items-center gap-2 pr-4 pl-5 ${whenCollapsed('md:justify-center md:px-2')}`}>
-          <img src="/logo-rc.png" alt="RC+" className={`h-7 w-auto ${whenCollapsed('md:h-5')}`} />
+          <img src="/logo-rc.svg" alt="RC+" className={`h-7 w-auto ${whenCollapsed('md:h-5')}`} />
           <span className={`min-w-0 flex-1 truncate text-[15px] font-semibold whitespace-nowrap text-slate-700 ${whenCollapsed('md:hidden')}`}>
             Gestão de Melhorias
           </span>
@@ -106,7 +106,7 @@ export function Layout() {
         </div>
         {/* Recolher/expandir: botão redondo na borda do menu, visível nos dois estados. */}
         <button
-          className="absolute top-5 -right-3 hidden size-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 elev-card hover:bg-blue-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:inline-flex"
+          className="absolute top-5 -right-3 hidden size-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 elev-card hover:bg-blue-600 hover:text-[#eff0eb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:inline-flex"
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
           title={collapsed ? 'Expandir menu' : 'Recolher menu'}
@@ -128,7 +128,7 @@ export function Layout() {
                     aria-label={collapsed ? label : undefined}
                     className={({ isActive }) =>
                       `relative flex h-[38px] items-center gap-3 rounded-md px-3 text-[15px] ${whenCollapsed('md:justify-center md:px-0')} ${
-                        isActive ? 'bg-blue-600 text-white shadow-[0_2px_6px_0_rgba(115,103,240,0.3)]' : 'text-slate-500 hover:bg-[rgba(47,43,61,0.06)]'
+                        isActive ? 'bg-blue-600 text-[#eff0eb] shadow-[0_2px_6px_0_rgba(14,14,14,0.24)]' : 'text-slate-500 hover:bg-[rgba(14,14,14,0.05)]'
                       }`
                     }
                   >
