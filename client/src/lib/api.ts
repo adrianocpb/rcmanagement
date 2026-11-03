@@ -162,11 +162,8 @@ export interface Task {
   status_color: string;
   priority: Priority;
   estimated_hours: number | null;
-  ice_impact: number | null;
-  ice_confidence: number | null;
-  ice_ease: number | null;
-  /** Calculado pelo servidor: impacto × confiança × facilidade (nulo se faltar algum fator). */
-  ice_score: number | null;
+  /** Ordem manual dentro da coluna do quadro (menor = mais acima). */
+  board_position: number | null;
   planned_start_date: string | null;
   planned_end_date: string | null;
   started_at: string | null;

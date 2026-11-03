@@ -50,7 +50,7 @@ Todas as tabelas têm PK `id INTEGER AUTOINCREMENT` e `created_at`/`updated_at` 
 | `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, **is_cancel_status**, active | `position` = ordem das colunas. Só um `is_default`. |
 | `epics` | name, description, okr (texto), owner_id → users, status, start_date, end_date, active | status ∈ planejado, em_andamento, concluido, cancelado. |
 | `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, status, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
-| `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date?, ice_impact?, ice_confidence?, ice_ease?, ice_score, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
+| `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date?, board_position, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
 | `task_status_history` | task_id → tasks, from_status_id? (NULL = criação), to_status_id, changed_by → users, changed_at | Base para análises futuras de gargalo e tempo por etapa. |
 
 Índices: em todas as FKs de `tasks` (status, responsável, solicitante, setor, épico, outcome), em
@@ -94,12 +94,16 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   (situação "Cancelada"), sai do WIP, do Aging e do filtro "somente atrasadas", não conta no
   Throughput/Cycle Time/Lead Time, não entra no tempo por coluna e não entra no total do progresso
   de épicos e outcomes. Continua contando em "Tarefas criadas" e na distribuição por status.
-- **Priorização ICE (tarefas e outcomes):** Impacto, Confiança e Facilidade são opcionais, inteiros de
+- **Priorização ICE (outcomes):** Impacto, Confiança e Facilidade são opcionais, inteiros de
   1 a 10 (validados na API e por `CHECK` no banco). `ice_score = impacto × confiança × facilidade`
   (1 a 1000) é uma **coluna gerada pelo banco** — nunca é gravada pelo usuário e não fica inconsistente;
-  fica vazia enquanto faltar algum fator. Ordenação: colunas da Lista de tarefas (clique no
-  cabeçalho), seletor "Ordenar" no Kanban (dentro de cada coluna) e na tela de Outcomes; sempre do
-  maior para o menor, com itens não estimados no fim.
+  fica vazia enquanto faltar algum fator. Ordenação na tela de Outcomes, do maior para o menor.
+  (Tarefas não têm ICE desde a migration `008`.)
+- **Ordem do quadro (tarefas):** `board_position` (número real) define a ordem dentro de cada coluna;
+  menor fica mais acima. `PATCH /api/tasks/:id/position` com `{status_id, before_id}` coloca a tarefa
+  antes de `before_id` (ou no fim, se vazio), usando o ponto médio entre as vizinhas e renumerando a
+  coluna quando não sobra espaço. Mudar de coluna por ali aplica as mesmas regras de status
+  (datas reais e histórico). Tarefa nova, ou que muda de status pelo detalhe, entra no fim da coluna.
 - **Lixeira:** excluir uma tarefa a move para a lixeira (`deleted_at`, `deleted_by`); ela some das listas,
   do Kanban e dos indicadores. Somente administradores movem para a lixeira; a equipe pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
   seu histórico são removidos definitivamente — na subida do servidor, a cada 6 horas e ao abrir a

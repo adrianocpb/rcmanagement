@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { hashPassword } from '../lib/auth.js';
 import { addDays, todayLocal, zonedWallTimeToUtc } from '../lib/time.js';
+import { fillMissingBoardPositions } from '../modules/tasks/service.js';
 import { migrate, openDatabase, type DB } from './connection.js';
 
 type StatusKey = 'backlog' | 'priorizado' | 'dev' | 'validacao' | 'concluido';
@@ -209,14 +210,8 @@ export function seedDemo(db: DB, now = new Date()) {
     );
     for (const h of hist) insertHistory.run(info.lastInsertRowid, h[0], h[1], h[3], h[2]);
   }
-  // Estimativas ICE (impacto, confiança, facilidade) de demonstração. Algumas tarefas ficam sem
-  // estimativa para mostrar o caso "não estimado".
-  const setTaskIce = db.prepare('UPDATE tasks SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
-  const taskIds = (db.prepare('SELECT id FROM tasks ORDER BY id').all() as { id: number }[]).map((r) => r.id);
-  taskIds.forEach((id, i) => {
-    if (i % 7 === 6) return;
-    setTaskIce.run(((i * 7) % 10) + 1, ((i * 3 + 4) % 10) + 1, ((i * 5 + 2) % 10) + 1, id);
-  });
+  fillMissingBoardPositions(db);
+  // Estimativas ICE dos outcomes (impacto, confiança, facilidade) de demonstração.
   const setOutcomeIce = db.prepare('UPDATE outcomes SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
   [
     [O.tma, 9, 7, 6],

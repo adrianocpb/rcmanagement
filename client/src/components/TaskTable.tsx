@@ -2,7 +2,6 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Task } from '../lib/api';
 import { PRIORITY, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
-import { IceBadge } from './Ice';
 import { useTaskModal } from './TaskModal';
 import { DeadlineBadge, EmptyState, PriorityBadge, StatusPill } from './ui';
 
@@ -40,10 +39,6 @@ const COLUMNS: Col[] = [
   },
   { key: 'completed', label: 'Conclusão real', sort: (t) => t.completed_at, render: (t) => fmtDateOfInstant(t.completed_at) },
   { key: 'hours', label: 'Estim. (h)', sort: (t) => t.estimated_hours, render: (t) => fmtNumber(t.estimated_hours) },
-  { key: 'ice_impact', label: 'Impacto', sort: (t) => t.ice_impact, render: (t) => t.ice_impact ?? '—', defaultDir: -1 },
-  { key: 'ice_confidence', label: 'Confiança', sort: (t) => t.ice_confidence, render: (t) => t.ice_confidence ?? '—', defaultDir: -1 },
-  { key: 'ice_ease', label: 'Facilidade', sort: (t) => t.ice_ease, render: (t) => t.ice_ease ?? '—', defaultDir: -1 },
-  { key: 'ice_score', label: 'ICE', sort: (t) => t.ice_score, render: (t) => (t.ice_score != null ? <IceBadge score={t.ice_score} compact /> : '—'), defaultDir: -1 },
   { key: 'deadline', label: 'Prazo', sort: (t) => (t.is_overdue ? 0 : t.deadline_state === 'concluida_com_atraso' ? 1 : 2), render: (t) => <DeadlineBadge state={t.deadline_state} /> },
 ];
 

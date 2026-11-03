@@ -23,6 +23,7 @@ import { config } from '../config.js';
 import { hashPassword } from '../lib/auth.js';
 import { nowIso, zonedWallTimeToUtc } from '../lib/time.js';
 import { migrate, openDatabase, type DB } from './connection.js';
+import { fillMissingBoardPositions } from '../modules/tasks/service.js';
 
 // ---------------- Leitura do arquivo ----------------
 
@@ -343,6 +344,7 @@ export function importCsv(db: DB, buf: Uint8Array, opts: ImportOptions): ImportR
     existingTitles.add(norm(title));
     report.created.push({ line, title, status: status.name, sector: sector.name, assignee: assignee.name });
   });
+  if (!opts.dryRun) fillMissingBoardPositions(db);
 
   return report;
 }

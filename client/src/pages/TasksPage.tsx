@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Columns3, List, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ICE_SORT_OPTIONS, type IceSortKey } from '../components/Ice';
-import { Kanban } from '../components/Kanban';
+import { CARD_SORT_OPTIONS, isCardSort, Kanban, type CardSort } from '../components/Kanban';
 import { EMPTY_FILTERS, TaskFilters, type TaskFilterValues } from '../components/TaskFilters';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
@@ -34,9 +33,11 @@ function usePersistentState<T>(key: string, initial: T) {
 export function TasksPage() {
   const [prefs, setPrefs] = usePersistentState('tasks.prefs', {
     view: 'kanban' as 'kanban' | 'list',
-    cardSort: '' as IceSortKey | '',
+    cardSort: 'manual' as CardSort,
   });
   const [filters, setFilters] = usePersistentState<TaskFilterValues>('tasks.filters', EMPTY_FILTERS);
+  // Preferência salva no navegador pode ter um valor antigo (ex.: ordenação por ICE): volta à ordem do quadro.
+  const cardSort: CardSort = isCardSort(prefs.cardSort) ? prefs.cardSort : 'manual';
   const { open } = useTaskModal();
   const { data: statuses } = useStatuses();
   const [params, setParams] = useSearchParams();
@@ -102,15 +103,14 @@ export function TasksPage() {
             {prefs.view === 'kanban' && (
               <select
                 className="input w-auto py-1.5"
-                value={prefs.cardSort}
-                onChange={(e) => setPrefs((p) => ({ ...p, cardSort: e.target.value as IceSortKey | '' }))}
+                value={cardSort}
+                onChange={(e) => setPrefs((p) => ({ ...p, cardSort: e.target.value as CardSort }))}
                 aria-label="Ordenar cards"
-                title="Ordem dos cards dentro de cada coluna (maior primeiro)"
+                title="Na ordem do quadro, arraste os cards para definir a prioridade dentro de cada coluna"
               >
-                <option value="">Ordenar: prioridade e prazo</option>
-                {ICE_SORT_OPTIONS.map((o) => (
+                {CARD_SORT_OPTIONS.map((o) => (
                   <option key={o.key} value={o.key}>
-                    Ordenar: {o.label} (maior primeiro)
+                    Ordenar: {o.label}
                   </option>
                 ))}
               </select>
@@ -130,7 +130,7 @@ export function TasksPage() {
           tasks={tasks ?? []}
           statuses={statuses}
           queryKey={queryKey}
-          sortKey={prefs.cardSort}
+          sort={cardSort}
           statusFilter={filters.status_id ? Number(filters.status_id) : undefined}
         />
       ) : (

@@ -12,6 +12,7 @@ import {
   deleteTask,
   getTask,
   listTasks,
+  moveTask,
   listTrash,
   purgeTask,
   purgeTrash,
@@ -86,6 +87,11 @@ export function tasksRouter(db: DB) {
   r.patch('/:id/status', (req, res) => {
     const { status_id } = z.object({ status_id: z.coerce.number().int().positive() }).parse(req.body);
     res.json(changeStatus(db, idParam(req), status_id, req.user!.id));
+  });
+
+  // Ordem manual no quadro: coluna + posição (antes de qual tarefa; vazio = fim da coluna).
+  r.patch('/:id/position', (req, res) => {
+    res.json(moveTask(db, idParam(req), req.body, req.user!.id));
   });
 
   // Mover para a lixeira: somente administradores.

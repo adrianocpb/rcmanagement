@@ -184,38 +184,13 @@ describe('épicos, outcomes e dashboard', () => {
 });
 
 describe('priorização ICE', () => {
-  it('calcula o ICE score da tarefa automaticamente (impacto × confiança × facilidade)', async () => {
+  it('tarefas não têm mais ICE (campos enviados são ignorados)', async () => {
     const { body } = await ctx.agent
       .post('/api/tasks')
       .send({ ...baseTask, ice_impact: 8, ice_confidence: 5, ice_ease: 3 })
       .expect(201);
-    expect(body.ice_score).toBe(120);
-    const upd = await ctx.agent.put(`/api/tasks/${body.id}`).send({ ice_ease: 10 }).expect(200);
-    expect(upd.body.ice_score).toBe(400);
-    // Mover a tarefa não apaga a estimativa
-    const moved = await ctx.agent.patch(`/api/tasks/${body.id}/status`).send({ status_id: ctx.byName('Priorizado') });
-    expect(moved.body.ice_score).toBe(400);
-  });
-
-  it('ICE score fica vazio enquanto faltar algum fator', async () => {
-    const { body } = await ctx.agent.post('/api/tasks').send({ ...baseTask, ice_impact: 8 }).expect(201);
-    expect(body.ice_score).toBeNull();
-    const cleared = await ctx.agent.put(`/api/tasks/${body.id}`).send({ ice_impact: '' }).expect(200);
-    expect(cleared.body.ice_impact).toBeNull();
-  });
-
-  it('aceita apenas inteiros de 1 a 10', async () => {
-    for (const v of [0, 11, 2.5, 'abc']) {
-      await ctx.agent.post('/api/tasks').send({ ...baseTask, ice_impact: v }).expect(400);
-    }
-  });
-
-  it('ignora ice_score enviado pelo cliente', async () => {
-    const { body } = await ctx.agent
-      .post('/api/tasks')
-      .send({ ...baseTask, ice_impact: 2, ice_confidence: 2, ice_ease: 2, ice_score: 999 })
-      .expect(201);
-    expect(body.ice_score).toBe(8);
+    expect(body).not.toHaveProperty('ice_score');
+    expect(body).not.toHaveProperty('ice_impact');
   });
 
   it('calcula o ICE score do outcome', async () => {
@@ -229,6 +204,77 @@ describe('priorização ICE', () => {
       .post('/api/outcomes')
       .send({ name: 'Outcome inválido', epic_id: epic.id, ice_impact: 11 })
       .expect(400);
+  });
+});
+
+describe('ordem manual no quadro', () => {
+  const column = async (statusId: number) =>
+    ((await ctx.agent.get(`/api/tasks?status_id=${statusId}`).expect(200)).body as { id: number; board_position: number }[])
+      .sort((a, b) => a.board_position - b.board_position)
+      .map((t) => t.id);
+
+  it('nova tarefa entra no fim da coluna e pode ser movida para o topo ou entre outras', async () => {
+    const backlog = ctx.byName('Backlog');
+    const a = (await ctx.agent.post('/api/tasks').send({ ...baseTask, title: 'A', status_id: backlog }).expect(201)).body.id;
+    const b = (await ctx.agent.post('/api/tasks').send({ ...baseTask, title: 'B', status_id: backlog }).expect(201)).body.id;
+    let order = await column(backlog);
+    expect(order.slice(-2)).toEqual([a, b]);
+
+    const first = order[0];
+    await ctx.agent.patch(`/api/tasks/${b}/position`).send({ status_id: backlog, before_id: first }).expect(200);
+    order = await column(backlog);
+    expect(order[0]).toBe(b);
+
+    // Entre as duas primeiras
+    await ctx.agent.patch(`/api/tasks/${a}/position`).send({ status_id: backlog, before_id: first }).expect(200);
+    order = await column(backlog);
+    expect(order.slice(0, 3)).toEqual([b, a, first]);
+
+    // Fim da coluna
+    await ctx.agent.patch(`/api/tasks/${b}/position`).send({ status_id: backlog, before_id: null }).expect(200);
+    order = await column(backlog);
+    expect(order[order.length - 1]).toBe(b);
+  });
+
+  it('mover para outra coluna muda o status (com histórico) e respeita a posição', async () => {
+    const backlog = ctx.byName('Backlog');
+    const dev = ctx.byName('Em desenvolvimento');
+    const t = (await ctx.agent.post('/api/tasks').send({ ...baseTask, status_id: backlog }).expect(201)).body.id;
+    const devFirst = (await column(dev))[0];
+    const moved = (await ctx.userAgent.patch(`/api/tasks/${t}/position`).send({ status_id: dev, before_id: devFirst }).expect(200)).body;
+    expect(moved.status_id).toBe(dev);
+    expect(moved.started_at).toBeTruthy(); // regra de status aplicada
+    expect(moved.history.at(-1).to_status_id).toBe(dev);
+    expect((await column(dev))[0]).toBe(t);
+  });
+
+  it('mudança de status pelo detalhe coloca a tarefa no fim da nova coluna', async () => {
+    const priorizado = ctx.byName('Priorizado');
+    const t = (await ctx.agent.post('/api/tasks').send(baseTask).expect(201)).body.id;
+    await ctx.agent.patch(`/api/tasks/${t}/status`).send({ status_id: priorizado }).expect(200);
+    const order = await column(priorizado);
+    expect(order[order.length - 1]).toBe(t);
+  });
+
+  it('muitas inserções no mesmo ponto renumeram a coluna sem perder a ordem', async () => {
+    const backlog = ctx.byName('Backlog');
+    const anchor = (await ctx.agent.post('/api/tasks').send({ ...baseTask, status_id: backlog }).expect(201)).body.id;
+    const ids: number[] = [];
+    for (let i = 0; i < 45; i++) {
+      const id = (await ctx.agent.post('/api/tasks').send({ ...baseTask, title: `T${i}`, status_id: backlog }).expect(201)).body.id;
+      await ctx.agent.patch(`/api/tasks/${id}/position`).send({ status_id: backlog, before_id: anchor }).expect(200);
+      ids.push(id);
+    }
+    const order = await column(backlog);
+    const i = order.indexOf(anchor);
+    expect(order.slice(i - 45, i)).toEqual(ids);
+  });
+
+  it('valida a referência', async () => {
+    const t = (await ctx.agent.post('/api/tasks').send(baseTask).expect(201)).body.id;
+    const other = (await ctx.agent.post('/api/tasks').send({ ...baseTask, status_id: ctx.byName('Priorizado') }).expect(201)).body.id;
+    await ctx.agent.patch(`/api/tasks/${t}/position`).send({ status_id: ctx.byName('Backlog'), before_id: other }).expect(400);
+    await ctx.agent.patch(`/api/tasks/${t}/position`).send({ status_id: ctx.byName('Backlog'), before_id: t }).expect(400);
   });
 });
 

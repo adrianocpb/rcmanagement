@@ -236,4 +236,26 @@ CREATE TABLE request_attachments (
 CREATE INDEX idx_request_attachments_request ON request_attachments(request_id);
 `,
   },
+  {
+    // ICE sai das tarefas (continua nos outcomes). Tarefas ganham posição manual dentro da coluna do
+    // quadro, para o PO priorizar a ordem; inicializada com a ordem anterior (prioridade e prazo).
+    id: '008_tasks_board_position_no_ice',
+    sql: `
+ALTER TABLE tasks DROP COLUMN ice_score;
+ALTER TABLE tasks DROP COLUMN ice_impact;
+ALTER TABLE tasks DROP COLUMN ice_confidence;
+ALTER TABLE tasks DROP COLUMN ice_ease;
+ALTER TABLE tasks ADD COLUMN board_position REAL;
+UPDATE tasks SET board_position = 1024 * (
+  SELECT rn FROM (
+    SELECT id, ROW_NUMBER() OVER (
+      PARTITION BY status_id
+      ORDER BY CASE priority WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
+               planned_end_date IS NULL, planned_end_date, id
+    ) AS rn FROM tasks
+  ) x WHERE x.id = tasks.id
+);
+CREATE INDEX idx_tasks_board ON tasks(status_id, board_position);
+`,
+  },
 ];

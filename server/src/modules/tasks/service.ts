@@ -4,7 +4,6 @@ import { badRequest, notFound } from '../../lib/http.js';
 import { addDays, nowIso, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
 import {
   PRIORITIES,
-  iceValue,
   optionalDate,
   optionalId,
   optionalInstant,
@@ -30,9 +29,6 @@ export const createTaskSchema = z.object({
   priority: z.preprocess((v) => (v === '' || v == null ? undefined : v), z.enum(PRIORITIES).default('media')),
   estimated_hours: optionalNumber.refine((v) => v === null || v >= 0, 'não pode ser negativo'),
   planned_start_date: optionalDate,
-  ice_impact: iceValue,
-  ice_confidence: iceValue,
-  ice_ease: iceValue,
   planned_end_date: optionalDate, // opcional: sem prazo, a tarefa nunca fica "atrasada"
 });
 
@@ -222,9 +218,8 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
       .prepare(
         `INSERT INTO tasks (title, description, notes, sector_id, requester_id, assignee_id, epic_id, outcome_id,
                             status_id, priority, estimated_hours, planned_start_date, planned_end_date,
-                            ice_impact, ice_confidence, ice_ease,
-                            started_at, completed_at, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            board_position, started_at, completed_at, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         d.title,
@@ -240,9 +235,7 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
         d.estimated_hours,
         d.planned_start_date,
         d.planned_end_date,
-        d.ice_impact,
-        d.ice_confidence,
-        d.ice_ease,
+        endOfColumn(db, status.id),
         dates.started_at,
         dates.completed_at,
         userId,
@@ -302,7 +295,7 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
   const text = (k: 'description' | 'notes') =>
     Object.prototype.hasOwnProperty.call(d, k) ? (d[k] ?? null) : current[k];
   const nullable = (
-    k: 'estimated_hours' | 'planned_start_date' | 'planned_end_date' | 'ice_impact' | 'ice_confidence' | 'ice_ease',
+    k: 'estimated_hours' | 'planned_start_date' | 'planned_end_date',
   ) =>
     Object.prototype.hasOwnProperty.call(d, k) ? (d[k] ?? null) : current[k];
 
@@ -310,7 +303,7 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
     db.prepare(
       `UPDATE tasks SET title = ?, description = ?, notes = ?, sector_id = ?, requester_id = ?, assignee_id = ?,
                         epic_id = ?, outcome_id = ?, status_id = ?, priority = ?, estimated_hours = ?,
-                        planned_start_date = ?, planned_end_date = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
+                        planned_start_date = ?, planned_end_date = ?, board_position = ?,
                         started_at = ?, completed_at = ?, updated_at = ?
         WHERE id = ?`,
     ).run(
@@ -327,9 +320,8 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
       nullable('estimated_hours'),
       nullable('planned_start_date'),
       nullable('planned_end_date'),
-      nullable('ice_impact'),
-      nullable('ice_confidence'),
-      nullable('ice_ease'),
+      // Mudou de coluna: entra no fim da nova coluna (a ordem manual é ajustada com moveTask).
+      statusChanged ? endOfColumn(db, newStatusId) : current.board_position,
       dates.started_at,
       dates.completed_at,
       now,
@@ -342,6 +334,89 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
 
 export function changeStatus(db: DB, id: number, statusId: number, userId: number, now = nowIso()) {
   return updateTask(db, id, { status_id: statusId }, userId, now);
+}
+
+// ---------------- Ordem manual no quadro ----------------
+
+const POSITION_STEP = 1024;
+
+/** Posição para entrar no fim de uma coluna. */
+function endOfColumn(db: DB, statusId: number, exceptId = 0): number {
+  const r = db
+    .prepare('SELECT MAX(board_position) AS m FROM tasks WHERE status_id = ? AND deleted_at IS NULL AND id <> ?')
+    .get(statusId, exceptId) as { m: number | null };
+  return (r.m ?? 0) + POSITION_STEP;
+}
+
+/** Renumera uma coluna (passos iguais) quando não sobra espaço entre duas posições vizinhas. */
+function renumberColumn(db: DB, statusId: number) {
+  const ids = db
+    .prepare('SELECT id FROM tasks WHERE status_id = ? ORDER BY board_position IS NULL, board_position, id')
+    .all(statusId) as { id: number }[];
+  const upd = db.prepare('UPDATE tasks SET board_position = ? WHERE id = ?');
+  ids.forEach((r, i) => upd.run((i + 1) * POSITION_STEP, r.id));
+}
+
+/**
+ * Tarefas sem posição (gravadas direto no banco: seed, importação) vão para o fim da sua coluna,
+ * na ordem de prioridade e prazo.
+ */
+export function fillMissingBoardPositions(db: DB) {
+  const rows = db
+    .prepare(
+      `SELECT id, status_id FROM tasks WHERE board_position IS NULL
+        ORDER BY CASE priority WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
+                 planned_end_date IS NULL, planned_end_date, id`,
+    )
+    .all() as { id: number; status_id: number }[];
+  const upd = db.prepare('UPDATE tasks SET board_position = ? WHERE id = ?');
+  for (const r of rows) upd.run(endOfColumn(db, r.status_id, r.id), r.id);
+  return rows.length;
+}
+
+export const moveTaskSchema = z.object({
+  status_id: z.coerce.number().int().positive(),
+  /** Tarefa que fica logo abaixo da movida; vazio = fim da coluna. */
+  before_id: z.preprocess((v) => (v === '' || v === undefined ? null : v), z.coerce.number().int().positive().nullable()),
+});
+
+/**
+ * Move a tarefa para uma posição do quadro: coluna (status) e lugar dentro dela.
+ * Mudança de coluna segue as mesmas regras de status (datas reais e histórico).
+ */
+export function moveTask(db: DB, id: number, input: unknown, userId: number, now = nowIso()) {
+  const { status_id, before_id } = moveTaskSchema.parse(input);
+  if (before_id === id) throw badRequest('Posição inválida.');
+  return db.transaction(() => {
+    const current = db.prepare('SELECT status_id FROM tasks WHERE id = ? AND deleted_at IS NULL').get(id) as
+      | { status_id: number }
+      | undefined;
+    if (!current) throw notFound('Tarefa');
+    if (current.status_id !== status_id) updateTask(db, id, { status_id }, userId, now);
+
+    const place = () => {
+      if (before_id == null) return endOfColumn(db, status_id, id);
+      const before = db
+        .prepare('SELECT board_position AS p FROM tasks WHERE id = ? AND status_id = ? AND deleted_at IS NULL')
+        .get(before_id, status_id) as { p: number | null } | undefined;
+      if (!before || before.p == null) throw badRequest('A tarefa de referência não está nessa coluna.');
+      const prev = db
+        .prepare(
+          `SELECT MAX(board_position) AS p FROM tasks
+            WHERE status_id = ? AND deleted_at IS NULL AND id <> ? AND board_position < ?`,
+        )
+        .get(status_id, id, before.p) as { p: number | null };
+      const lower = prev.p ?? before.p - 2 * POSITION_STEP;
+      return before.p - lower > 1e-6 ? (lower + before.p) / 2 : null;
+    };
+    let pos = place();
+    if (pos == null) {
+      renumberColumn(db, status_id);
+      pos = place();
+    }
+    db.prepare('UPDATE tasks SET board_position = ?, updated_at = ? WHERE id = ?').run(pos, now, id);
+    return getTask(db, id);
+  })();
 }
 
 /** Move a tarefa para a lixeira (exclusão lógica). */
