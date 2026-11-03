@@ -12,6 +12,8 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
 - **Regras automáticas**: data de criação, início real e conclusão real preenchidos pelas mudanças
   de status (baseadas em flags configuráveis, não no nome), indicação de atraso e histórico completo.
 - **Épicos** (ligados a um OKR) e **Outcomes** com indicador de negócio (baseline → atual → meta).
+- **Comentários nas tarefas**: texto com links clicáveis e até 5 imagens por comentário (10 MB no
+  total), inclusive coladas com Ctrl+V. Quem escreveu edita e exclui; o administrador exclui qualquer um.
 - **Ordem do quadro**: no Kanban, arraste os cards para definir a ordem dentro de cada coluna (o PO
   prioriza e quem executa puxa o primeiro). Também dá para ordenar por prioridade e prazo, conclusão
   prevista ou data de criação.

@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth';
 import { PRIORITY, PRIORITY_KEYS, fmtDate, fmtDateTime, fmtNumber, isoToLocalInput, localInputToIso } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
 import { OriginRequestCard } from './Requests';
+import { TaskComments } from './TaskComments';
 import { Avatar, DeadlineBadge, ErrorText, Field, Modal, PriorityBadge, Spinner, StatusPill } from './ui';
 
 /** Invalida tudo o que depende de tarefas. */
@@ -188,6 +189,10 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               <Row label="Conclusão real">{fmtDateTime(task.completed_at)}</Row>
             </Section>
           </div>
+
+          <Section title={`Comentários${task.comments_count ? ` (${task.comments_count})` : ''}`}>
+            <TaskComments taskId={task.id} />
+          </Section>
 
           <Section title="Histórico">
             <ol className="relative ml-2 border-l border-slate-200">

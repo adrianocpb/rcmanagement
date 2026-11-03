@@ -258,4 +258,29 @@ UPDATE tasks SET board_position = 1024 * (
 CREATE INDEX idx_tasks_board ON tasks(status_id, board_position);
 `,
   },
+  {
+    // Comentários nas tarefas (texto com links) e imagens anexadas a cada comentário.
+    id: '009_task_comments',
+    sql: `
+CREATE TABLE task_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id INTEGER NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_task_comments_task ON task_comments(task_id, created_at);
+CREATE TABLE task_comment_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL REFERENCES task_comments(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  stored_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX idx_task_comment_images_comment ON task_comment_images(comment_id);
+`,
+  },
 ];

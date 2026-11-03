@@ -11,7 +11,7 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CalendarDays, Plus, Target } from 'lucide-react';
+import { AlertCircle, CalendarDays, MessageSquare, Plus, Target } from 'lucide-react';
 import { useState } from 'react';
 import { api, type Status, type Task } from '../lib/api';
 import { fmtShortDate, PRIORITY } from '../lib/format';
@@ -277,6 +277,11 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
           task.deadline_state === 'concluida_com_atraso' ||
           task.deadline_state === 'cancelada') && (
           <DeadlineBadge state={task.deadline_state} />
+        )}
+        {task.comments_count > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-500" title={`${task.comments_count} comentário(s)`}>
+            <MessageSquare size={12} /> {task.comments_count}
+          </span>
         )}
         {task.planned_end_date && (
           <span className={`ml-auto inline-flex items-center gap-1 text-[11px] ${late ? 'font-semibold text-red-600' : 'text-slate-500'}`} title="Conclusão prevista">

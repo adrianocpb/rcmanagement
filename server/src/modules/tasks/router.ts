@@ -4,6 +4,7 @@ import type { DB } from '../../db/connection.js';
 import { config } from '../../config.js';
 import { requireAdmin } from '../../lib/auth.js';
 import { idParam } from '../../lib/http.js';
+import { commentsRouter } from '../comments.js';
 import { isValidDate } from '../../lib/time.js';
 import { PRIORITIES } from '../../lib/validation.js';
 import {
@@ -69,6 +70,9 @@ export function tasksRouter(db: DB) {
   r.post('/:id/restore', (req, res) => {
     res.json(restoreTask(db, idParam(req)));
   });
+
+  // Comentários (texto e imagens) de uma tarefa.
+  r.use('/:id/comments', commentsRouter(db));
 
   r.get('/:id', (req, res) => {
     const id = idParam(req);

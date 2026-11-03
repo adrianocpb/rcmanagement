@@ -164,6 +164,7 @@ export interface Task {
   estimated_hours: number | null;
   /** Ordem manual dentro da coluna do quadro (menor = mais acima). */
   board_position: number | null;
+  comments_count: number;
   planned_start_date: string | null;
   planned_end_date: string | null;
   started_at: string | null;
@@ -277,4 +278,20 @@ export interface OriginRequest {
   requester_name: string;
   created_at: string;
   attachments: Attachment[];
+}
+
+// ---------- Comentários das tarefas ----------
+
+export interface TaskComment {
+  id: number;
+  task_id: number;
+  author_id: number;
+  author_name: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  edited: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  images: { id: number; filename: string; size: number; url: string }[];
 }

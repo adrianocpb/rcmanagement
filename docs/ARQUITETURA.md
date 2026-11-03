@@ -99,6 +99,10 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   (1 a 1000) é uma **coluna gerada pelo banco** — nunca é gravada pelo usuário e não fica inconsistente;
   fica vazia enquanto faltar algum fator. Ordenação na tela de Outcomes, do maior para o menor.
   (Tarefas não têm ICE desde a migration `008`.)
+- **Comentários (tarefas):** tabelas `task_comments` (autor, texto) e `task_comment_images`; imagens
+  PNG/JPG/GIF/WEBP, até 5 por comentário e 10 MB no total, gravadas em `UPLOADS_DIR/tasks/<id>/` e
+  servidas só para a equipe (`nosniff`, CSP restritiva). Links são reconhecidos no frontend (só
+  http/https). Excluir o comentário apaga as imagens; esvaziar a lixeira apaga a pasta da tarefa.
 - **Ordem do quadro (tarefas):** `board_position` (número real) define a ordem dentro de cada coluna;
   menor fica mais acima. `PATCH /api/tasks/:id/position` com `{status_id, before_id}` coloca a tarefa
   antes de `before_id` (ou no fim, se vazio), usando o ponto médio entre as vizinhas e renumerando a

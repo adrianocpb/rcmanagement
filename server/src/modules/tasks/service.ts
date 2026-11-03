@@ -13,6 +13,7 @@ import {
   requiredText,
   sentOnly,
 } from '../../lib/validation.js';
+import { removeTaskUploads } from '../comments.js';
 import { getStatus, type StatusRow } from '../statuses.js';
 import { applyStatusEntry, deadlineState } from './rules.js';
 
@@ -65,7 +66,8 @@ const BASE_SELECT = `
          req.name AS requester_name,
          asg.name AS assignee_name,
          e.name  AS epic_name,
-         o.name  AS outcome_name
+         o.name  AS outcome_name,
+         (SELECT COUNT(*) FROM task_comments c WHERE c.task_id = t.id) AS comments_count
     FROM tasks t
     JOIN statuses s   ON s.id = t.status_id
     JOIN sectors sec  ON sec.id = t.sector_id
@@ -471,15 +473,17 @@ export function restoreTask(db: DB, id: number) {
 export function purgeTask(db: DB, id: number) {
   const info = db.prepare('DELETE FROM tasks WHERE id = ? AND deleted_at IS NOT NULL').run(id);
   if (info.changes === 0) throw notFound('Tarefa na lixeira');
+  removeTaskUploads([id]);
 }
 
 /** Esvazia a lixeira. Sem `olderThanDays`, remove tudo; com ele, só o que passou do prazo. */
 export function purgeTrash(db: DB, olderThanDays?: number, now = new Date()): number {
-  const info =
-    olderThanDays === undefined
-      ? db.prepare('DELETE FROM tasks WHERE deleted_at IS NOT NULL').run()
-      : db
-          .prepare('DELETE FROM tasks WHERE deleted_at IS NOT NULL AND deleted_at < ?')
-          .run(trashCutoff(olderThanDays, now));
+  const where =
+    olderThanDays === undefined ? 'deleted_at IS NOT NULL' : 'deleted_at IS NOT NULL AND deleted_at < ?';
+  const params = olderThanDays === undefined ? [] : [trashCutoff(olderThanDays, now)];
+  const ids = (db.prepare(`SELECT id FROM tasks WHERE ${where}`).all(...params) as { id: number }[]).map((r) => r.id);
+  if (!ids.length) return 0;
+  const info = db.prepare(`DELETE FROM tasks WHERE ${where}`).run(...params);
+  removeTaskUploads(ids); // imagens dos comentários
   return info.changes;
 }
