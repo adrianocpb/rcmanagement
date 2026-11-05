@@ -66,9 +66,9 @@ export function Layout() {
           title: 'Acompanhamento',
           items: [
             { to: '/', label: 'Dashboard', icon: BarChart3, end: true },
-            { to: '/tarefas', label: 'Tarefas', icon: KanbanSquare },
             { to: '/epicos', label: 'Épicos', icon: Flag },
             { to: '/outcomes', label: 'Outcomes', icon: Target },
+            { to: '/tarefas', label: 'Tarefas', icon: KanbanSquare },
           ],
         },
         {
