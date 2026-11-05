@@ -6,9 +6,9 @@ import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSor
 import { OriginRequestCard } from '../components/Requests';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
-import { EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner } from '../components/ui';
+import { EmptyState, ErrorText, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner } from '../components/ui';
 import { api, type Outcome, type Task } from '../lib/api';
-import { PLAN_STATUS, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
+import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, PLAN_STATUS, fmtDate, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
 import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
 import { Info, PlanStatusBadge, pct, sortByCreatedDesc } from './EpicsPage';
 
@@ -64,7 +64,7 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
   return (
     <Link to={`/outcomes/${o.id}`} className={`card group block p-4 transition hover:border-blue-300 hover:shadow-md ${o.active ? '' : 'opacity-60'}`}>
       <div className="mb-1 flex items-start gap-2">
-        <Target size={16} className="mt-0.5 shrink-0 text-violet-600" />
+        <Target size={16} className="mt-0.5 shrink-0" style={{ color: outcomeColor(o.color).dot }} />
         <h3 className="flex-1 font-semibold text-slate-900 group-hover:text-blue-700">{o.name}</h3>
         <IceBadge score={o.ice_score} />
         <PlanStatusBadge status={o.status} />
@@ -172,6 +172,7 @@ export function OutcomeDetailPage() {
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="size-3 shrink-0 rounded-full" style={{ background: outcomeColor(o.color).dot }} title={`Cor: ${outcomeColor(o.color).label}`} />
                 <h1 className="text-xl font-semibold text-slate-900">{o.name}</h1>
                 <PlanStatusBadge status={o.status} />
               </div>
@@ -269,6 +270,7 @@ export function OutcomeFormModal({
     ice_confidence: s(outcome?.ice_confidence),
     ice_ease: s(outcome?.ice_ease),
     active: outcome ? !!outcome.active : true,
+    color: outcome?.color ?? '',
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const save = useMutation({
@@ -309,6 +311,39 @@ export function OutcomeFormModal({
         </Field>
         <Field label="Descrição">
           <textarea className="input min-h-16" value={f.description} onChange={set('description')} />
+        </Field>
+        <Field label="Cor (identifica o outcome nas tarefas)">
+          <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Cor do outcome">
+            {!outcome && (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!f.color}
+                onClick={() => setF((p) => ({ ...p, color: '' }))}
+                className={`rounded-full border px-2.5 py-1 text-xs ${!f.color ? 'border-slate-900 text-slate-900' : 'border-slate-200 text-slate-500'}`}
+              >
+                Automática
+              </button>
+            )}
+            {OUTCOME_COLOR_KEYS.map((k) => {
+              const c = OUTCOME_COLOR[k];
+              const on = f.color === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={c.label}
+                  title={c.label}
+                  onClick={() => setF((p) => ({ ...p, color: k }))}
+                  className={`size-7 rounded-full ring-offset-2 transition ${on ? 'ring-2 ring-slate-900' : 'hover:ring-2 hover:ring-slate-300'}`}
+                  style={{ background: c.dot }}
+                />
+              );
+            })}
+            {f.name && <OutcomeTag name={f.name} color={f.color || null} className="ml-1" />}
+          </div>
         </Field>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Épico" required>

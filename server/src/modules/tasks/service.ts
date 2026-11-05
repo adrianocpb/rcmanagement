@@ -67,6 +67,7 @@ const BASE_SELECT = `
          asg.name AS assignee_name,
          e.name  AS epic_name,
          o.name  AS outcome_name,
+         o.color AS outcome_color,
          (SELECT COUNT(*) FROM task_comments c WHERE c.task_id = t.id) AS comments_count
     FROM tasks t
     JOIN statuses s   ON s.id = t.status_id

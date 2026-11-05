@@ -11,12 +11,12 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CalendarDays, MessageSquare, Plus, Target } from 'lucide-react';
+import { AlertCircle, CalendarDays, MessageSquare, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { api, type Status, type Task } from '../lib/api';
 import { fmtShortDate, PRIORITY } from '../lib/format';
 import { useInvalidateTasks, useTaskModal } from './TaskModal';
-import { Avatar, DeadlineBadge, PriorityBadge } from './ui';
+import { Avatar, DeadlineBadge, OutcomeTag, PriorityBadge } from './ui';
 
 /** Ordem dos cards dentro de cada coluna. "manual" = ordem definida arrastando (a do PO). */
 export type CardSort = 'manual' | 'priority' | 'due' | 'created';
@@ -265,9 +265,8 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
         <Avatar name={task.assignee_name} id={task.assignee_id} />
       </div>
       {task.outcome_name && (
-        <div className="mb-1.5 flex items-start gap-1 text-[11px] leading-tight text-violet-700" title="Outcome">
-          <Target size={12} className="mt-px shrink-0" />
-          <span className="line-clamp-2">{task.outcome_name}</span>
+        <div className="mb-1.5">
+          <OutcomeTag name={task.outcome_name} color={task.outcome_color} clamp />
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">

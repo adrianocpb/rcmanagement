@@ -292,4 +292,16 @@ DROP INDEX idx_task_comment_images_comment;
 CREATE INDEX idx_task_comment_files_comment ON task_comment_files(comment_id);
 `,
   },
+  {
+    // Cor do outcome (tag nos cards e na lista de tarefas). Distribui a paleta entre os existentes.
+    id: '011_outcomes_color',
+    sql: `
+ALTER TABLE outcomes ADD COLUMN color TEXT;
+UPDATE outcomes SET color = (
+  SELECT CASE (x.rn - 1) % 10 WHEN 0 THEN 'azul' WHEN 1 THEN 'verde' WHEN 2 THEN 'roxo' WHEN 3 THEN 'rosa' WHEN 4 THEN 'laranja' WHEN 5 THEN 'turquesa' WHEN 6 THEN 'amarelo' WHEN 7 THEN 'indigo' WHEN 8 THEN 'marrom' WHEN 9 THEN 'oliva' END
+    FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY epic_id, id) AS rn FROM outcomes) x
+   WHERE x.id = outcomes.id
+);
+`,
+  },
 ];

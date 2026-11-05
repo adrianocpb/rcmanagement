@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import type { Task } from '../lib/api';
 import { PRIORITY, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
 import { useTaskModal } from './TaskModal';
-import { DeadlineBadge, EmptyState, PriorityBadge, StatusPill } from './ui';
+import { DeadlineBadge, EmptyState, OutcomeTag, PriorityBadge, StatusPill } from './ui';
 
 type Col = {
   key: string;
@@ -22,7 +22,7 @@ const COLUMNS: Col[] = [
   { key: 'sector', label: 'Setor', sort: (t) => t.sector_name, render: (t) => t.sector_name },
   { key: 'requester', label: 'Solicitante', sort: (t) => t.requester_name, render: (t) => t.requester_name },
   { key: 'assignee', label: 'Responsável', sort: (t) => t.assignee_name, render: (t) => t.assignee_name },
-  { key: 'outcome', label: 'Outcome', sort: (t) => t.outcome_name, render: (t) => <span className="text-slate-600">{t.outcome_name ?? '—'}</span>, className: 'min-w-44' },
+  { key: 'outcome', label: 'Outcome', sort: (t) => t.outcome_name, render: (t) => (t.outcome_name ? <OutcomeTag name={t.outcome_name} color={t.outcome_color} clamp /> : <span className="text-slate-600">—</span>), className: 'min-w-44' },
   {
     key: 'created',
     label: 'Criada em',

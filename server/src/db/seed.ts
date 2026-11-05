@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { hashPassword } from '../lib/auth.js';
 import { addDays, todayLocal, zonedWallTimeToUtc } from '../lib/time.js';
+import { OUTCOME_COLORS } from '../modules/outcomes.js';
 import { fillMissingBoardPositions } from '../modules/tasks/service.js';
 import { migrate, openDatabase, type DB } from './connection.js';
 
@@ -105,8 +106,8 @@ export function seedDemo(db: DB, now = new Date()) {
   const outcomes: Record<string, { id: number; epic: number }> = {};
   const insertOutcome = db.prepare(
     `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
-                           indicator_unit, baseline_value, target_value, current_value, active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                           indicator_unit, baseline_value, target_value, current_value, active, color, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
   );
   for (const [epic, name, desc, owner, status, ind, unit, base, target, current] of [
     ['Eficiência no Atendimento', 'Reduzir tempo médio de atendimento', 'Diminuir o tempo entre abertura e resolução de chamados.', 'Maria', 'em_andamento', 'Tempo médio de atendimento', 'horas', 48, 24, 31],
@@ -117,7 +118,8 @@ export function seedDemo(db: DB, now = new Date()) {
   ] as const) {
     const id = Number(
       insertOutcome.run(
-        epics[epic], name, desc, users[owner], status, addDays(today, -90), addDays(today, 90), ind, unit, base, target, current, created, created,
+        epics[epic], name, desc, users[owner], status, addDays(today, -90), addDays(today, 90), ind, unit, base, target, current,
+        OUTCOME_COLORS[Object.keys(outcomes).length % OUTCOME_COLORS.length], created, created,
       ).lastInsertRowid,
     );
     outcomes[name] = { id, epic: epics[epic] };

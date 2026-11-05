@@ -332,6 +332,31 @@ describe('data de criação de épicos e outcomes', () => {
   });
 });
 
+describe('cor dos outcomes', () => {
+  it('recebe a cor menos usada, pode ser trocada e aparece nas tarefas', async () => {
+    const e = (await ctx.agent.post('/api/epics').send({ name: 'Épico cores' }).expect(201)).body;
+    const all = (await ctx.agent.get('/api/outcomes').expect(200)).body as { color: string | null }[];
+    expect(all.every((o) => o.color)).toBe(true); // a migration coloriu os existentes
+    const a = (await ctx.agent.post('/api/outcomes').send({ name: 'Cor A', epic_id: e.id }).expect(201)).body;
+    const b = (await ctx.agent.post('/api/outcomes').send({ name: 'Cor B', epic_id: e.id }).expect(201)).body;
+    expect(a.color).toBeTruthy();
+    expect(b.color).not.toBe(a.color);
+    // "Automática" no formulário envia cor vazia
+    expect((await ctx.agent.post('/api/outcomes').send({ name: 'Cor C', epic_id: e.id, color: '' }).expect(201)).body.color).toBeTruthy();
+
+    await ctx.agent.put(`/api/outcomes/${a.id}`).send({ name: 'Cor A', epic_id: e.id, color: 'cinza-neon' }).expect(400);
+    const edited = (await ctx.agent.put(`/api/outcomes/${a.id}`).send({ name: 'Cor A', epic_id: e.id, color: 'rosa' }).expect(200)).body;
+    expect(edited.color).toBe('rosa');
+    // Editar sem informar a cor mantém a atual
+    expect((await ctx.agent.put(`/api/outcomes/${a.id}`).send({ name: 'Cor A2', epic_id: e.id }).expect(200)).body.color).toBe('rosa');
+
+    const t = (
+      await ctx.agent.post('/api/tasks').send({ title: 'T cor', sector_id: 1, requester_id: 1, assignee_id: 1, outcome_id: a.id }).expect(201)
+    ).body;
+    expect(t.outcome_color).toBe('rosa');
+  });
+});
+
 describe('status "encerra sem entrega"', () => {
   async function cancelStatus() {
     const r = await ctx.agent.post('/api/statuses').send({ name: 'Cancelado', is_cancel_status: true, counts_in_wip: false }).expect(201);

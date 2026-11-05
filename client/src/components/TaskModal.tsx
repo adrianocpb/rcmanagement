@@ -8,7 +8,7 @@ import { PRIORITY, PRIORITY_KEYS, fmtDate, fmtDateTime, fmtNumber, isoToLocalInp
 import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
 import { OriginRequestCard } from './Requests';
 import { TaskComments } from './TaskComments';
-import { Avatar, DeadlineBadge, ErrorText, Field, Modal, PriorityBadge, Spinner, StatusPill } from './ui';
+import { Avatar, DeadlineBadge, ErrorText, Field, Modal, OutcomeTag, PriorityBadge, Spinner, StatusPill } from './ui';
 
 /** Invalida tudo o que depende de tarefas. */
 export function useInvalidateTasks() {
@@ -155,8 +155,8 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
               </Row>
               <Row label="Outcome">
                 {task.outcome_id ? (
-                  <Link className="text-slate-900 underline underline-offset-2 hover:text-slate-500" to={`/outcomes/${task.outcome_id}`}>
-                    {task.outcome_name}
+                  <Link className="hover:opacity-80" to={`/outcomes/${task.outcome_id}`}>
+                    <OutcomeTag name={task.outcome_name ?? ''} color={task.outcome_color} className="text-xs" />
                   </Link>
                 ) : (
                   '—'

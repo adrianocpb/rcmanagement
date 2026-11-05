@@ -135,6 +135,8 @@ export interface Outcome {
   /** Calculado pelo servidor: impacto × confiança × facilidade (nulo se faltar algum fator). */
   ice_score: number | null;
   active: number;
+  /** Chave da paleta OUTCOME_COLOR (client/src/lib/format.ts). */
+  color: string | null;
   tasks_count: number;
   tasks_done: number;
   /** Data de criação (instante UTC), preenchida automaticamente. */
@@ -157,6 +159,8 @@ export interface Task {
   epic_name: string | null;
   outcome_id: number | null;
   outcome_name: string | null;
+  /** Cor do outcome (chave da paleta OUTCOME_COLOR). */
+  outcome_color: string | null;
   status_id: number;
   status_name: string;
   status_color: string;

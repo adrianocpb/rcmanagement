@@ -1,7 +1,7 @@
-import { X } from 'lucide-react';
+import { Target, X } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import type { DeadlineState, Priority } from '../lib/api';
-import { DEADLINE, PRIORITY, initials } from '../lib/format';
+import { DEADLINE, PRIORITY, initials, outcomeColor } from '../lib/format';
 
 export function Modal({
   open,
@@ -62,6 +62,21 @@ export function PriorityBadge({ priority, compact }: { priority: Priority; compa
       <span className={`size-1.5 rounded-full ${p.dot}`} />
       {!compact && p.label}
       {compact && p.label}
+    </span>
+  );
+}
+
+/** Tag colorida do outcome (cards e lista de tarefas, telas de outcome). */
+export function OutcomeTag({ name, color, clamp, className = '' }: { name: string; color: string | null; clamp?: boolean; className?: string }) {
+  const c = outcomeColor(color);
+  return (
+    <span
+      title={`Outcome: ${name}`}
+      className={`inline-flex max-w-full items-start gap-1 rounded px-1.5 py-0.5 text-[11px] leading-tight font-medium ${className}`}
+      style={{ background: c.bg, color: c.text }}
+    >
+      <Target size={12} className="mt-px shrink-0" />
+      <span className={clamp ? 'line-clamp-2' : ''}>{name}</span>
     </span>
   );
 }

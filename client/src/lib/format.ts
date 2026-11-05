@@ -109,6 +109,26 @@ export const PRIORITY: Record<Priority, { label: string; cls: string; dot: strin
 };
 export const PRIORITY_KEYS: Priority[] = ['urgente', 'alta', 'media', 'baixa'];
 
+/**
+ * Cores dos outcomes (mesmas chaves do servidor: OUTCOME_COLORS em server/src/modules/outcomes.ts).
+ * Tons em hex de propósito: a paleta do Tailwind foi remapeada para o tema monocromático.
+ */
+export const OUTCOME_COLOR: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  azul: { label: 'Azul', bg: '#e3ecfb', text: '#1f4fb5', dot: '#3b6fe0' },
+  verde: { label: 'Verde', bg: '#e1f2e7', text: '#1d6f3e', dot: '#2f9e5a' },
+  roxo: { label: 'Roxo', bg: '#eee6fb', text: '#6236ad', dot: '#8b5cf6' },
+  rosa: { label: 'Rosa', bg: '#fbe5ef', text: '#a72c66', dot: '#db4b8f' },
+  laranja: { label: 'Laranja', bg: '#fdebdd', text: '#a84c16', dot: '#ea7a2f' },
+  turquesa: { label: 'Turquesa', bg: '#ddf3f0', text: '#11716a', dot: '#1fa89c' },
+  amarelo: { label: 'Amarelo', bg: '#faf1cc', text: '#7d6000', dot: '#d4a514' },
+  indigo: { label: 'Índigo', bg: '#e5e7fb', text: '#363b9e', dot: '#5b61d6' },
+  marrom: { label: 'Marrom', bg: '#f1e7de', text: '#714526', dot: '#a0673d' },
+  oliva: { label: 'Oliva', bg: '#ebf0d8', text: '#536219', dot: '#8a9b2e' },
+};
+export const OUTCOME_COLOR_KEYS = Object.keys(OUTCOME_COLOR);
+const NO_COLOR = { label: 'Sem cor', bg: 'rgba(107,107,102,0.16)', text: '#2e2e2c', dot: '#6b6b66' };
+export const outcomeColor = (key: string | null | undefined) => (key && OUTCOME_COLOR[key]) || NO_COLOR;
+
 export const PLAN_STATUS: Record<PlanStatus, { label: string; cls: string }> = {
   planejado: { label: 'Planejado', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600' },
   em_andamento: { label: 'Em andamento', cls: 'bg-blue-50 text-blue-700' },

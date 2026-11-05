@@ -16,6 +16,20 @@ import {
   requiredText,
 } from '../lib/validation.js';
 
+/** Paleta das cores dos outcomes (os tons ficam no frontend: client/src/lib/format.ts). */
+export const OUTCOME_COLORS = ['azul', 'verde', 'roxo', 'rosa', 'laranja', 'turquesa', 'amarelo', 'indigo', 'marrom', 'oliva'] as const;
+
+/** Cor menos usada entre os outcomes ativos (empate: ordem da paleta), para novos outcomes se distinguirem. */
+function nextColor(db: DB) {
+  const used = new Map(
+    (db.prepare('SELECT color, COUNT(*) AS n FROM outcomes WHERE active = 1 AND color IS NOT NULL GROUP BY color').all() as {
+      color: string;
+      n: number;
+    }[]).map((r) => [r.color, r.n]),
+  );
+  return [...OUTCOME_COLORS].sort((a, b) => (used.get(a) ?? 0) - (used.get(b) ?? 0))[0];
+}
+
 const schema = z.object({
   name: requiredText(200),
   description: optionalText,
@@ -33,6 +47,7 @@ const schema = z.object({
   ice_confidence: iceValue,
   ice_ease: iceValue,
   active: bool.default(true),
+  color: z.preprocess((v) => (v === '' ? null : v), z.enum(OUTCOME_COLORS).nullish()),
 });
 
 const OUTCOME_SELECT = `
@@ -58,13 +73,13 @@ export function createOutcome(db: DB, input: unknown) {
     .prepare(
       `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
                              indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
-                             ice_ease, active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                             ice_ease, active, color, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
       d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
-      d.ice_ease, +d.active, now, now,
+      d.ice_ease, +d.active, d.color ?? nextColor(db), now, now,
     );
   return db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
@@ -110,12 +125,12 @@ export function outcomesRouter(db: DB) {
         `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status = ?, start_date = ?,
                              target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
                              target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
-                             active = ?, updated_at = ?
+                             active = ?, color = COALESCE(?, color), updated_at = ?
           WHERE id = ?`,
       ).run(
         d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
         d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
-        d.ice_ease, +d.active, nowIso(), id,
+        d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
       );
       // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
       db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);
