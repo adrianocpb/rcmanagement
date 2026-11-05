@@ -293,5 +293,5 @@ export interface TaskComment {
   edited: boolean;
   can_edit: boolean;
   can_delete: boolean;
-  images: { id: number; filename: string; size: number; url: string }[];
+  attachments: Attachment[];
 }

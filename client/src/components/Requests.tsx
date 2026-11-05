@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ACCEPT } from '../lib/files';
 import { ExternalLink, FileText, Film, Image, Inbox, Paperclip, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -11,7 +12,6 @@ import { DeadlineBadge, ErrorText, Field, Modal, ProgressBar, StatusPill } from 
 
 export const MAX_FILES = 5;
 export const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
-export const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.mp4,.webm,.mov';
 
 export function RequestStatusBadge({ status }: { status: RequestStatus }) {
   const s = REQUEST_STATUS[status];

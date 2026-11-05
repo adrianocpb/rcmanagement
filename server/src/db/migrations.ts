@@ -283,4 +283,13 @@ CREATE TABLE task_comment_images (
 CREATE INDEX idx_task_comment_images_comment ON task_comment_images(comment_id);
 `,
   },
+  {
+    // Comentários passam a aceitar anexos de qualquer tipo permitido (PDF, Word, Excel...), não só imagens.
+    id: '010_task_comment_files',
+    sql: `
+ALTER TABLE task_comment_images RENAME TO task_comment_files;
+DROP INDEX idx_task_comment_images_comment;
+CREATE INDEX idx_task_comment_files_comment ON task_comment_files(comment_id);
+`,
+  },
 ];

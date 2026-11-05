@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ImagePlus, Pencil, Trash2, X } from 'lucide-react';
+import { FileText, Paperclip, Pencil, Trash2, X } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from 'react';
 import { api, type TaskComment } from '../lib/api';
 import { fmtBytes, fmtDateTime } from '../lib/format';
+import { ACCEPT } from '../lib/files';
+import { AttachmentList } from './Requests';
 import { useInvalidateTasks } from './TaskModal';
 import { Avatar, ErrorText } from './ui';
 
-const MAX_IMAGES = 5;
+const MAX_FILES = 5;
 const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
-const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
-const IMAGE_MIME = /^image\/(png|jpeg|gif|webp)$/;
+const ALLOWED_EXT = new Set(ACCEPT.split(','));
+const extOf = (name: string) => name.slice(name.lastIndexOf('.')).toLowerCase();
+const isImage = (mime: string) => /^image\/(png|jpeg|gif|webp)$/.test(mime);
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
 
 /** Texto com links: http(s)://… vira link clicável (abre em outra aba); o resto fica como texto. */
@@ -75,6 +78,9 @@ function CommentItem({ taskId, comment: c }: { taskId: number; comment: TaskComm
     },
   });
   const del = useMutation({ mutationFn: () => api.del(`/tasks/${taskId}/comments/${c.id}`), onSuccess: refresh });
+  // Imagens aparecem como miniaturas; PDF, Word, Excel etc. como itens para abrir/baixar.
+  const images = c.attachments.filter((a) => isImage(a.mime_type));
+  const others = c.attachments.filter((a) => !isImage(a.mime_type));
 
   return (
     <article className="flex gap-3">
@@ -93,7 +99,7 @@ function CommentItem({ taskId, comment: c }: { taskId: number; comment: TaskComm
             {c.can_delete && (
               <button
                 className="btn-ghost p-1"
-                onClick={() => confirm('Excluir este comentário (e as imagens dele)?') && del.mutate()}
+                onClick={() => confirm('Excluir este comentário (e os anexos dele)?') && del.mutate()}
                 title="Excluir comentário"
                 aria-label="Excluir comentário"
               >
@@ -127,13 +133,18 @@ function CommentItem({ taskId, comment: c }: { taskId: number; comment: TaskComm
             </p>
           )
         )}
-        {c.images.length > 0 && (
+        {images.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
-            {c.images.map((i) => (
+            {images.map((i) => (
               <a key={i.id} href={i.url} target="_blank" rel="noopener noreferrer" title={`${i.filename} (${fmtBytes(i.size)})`}>
                 <img src={i.url} alt={i.filename} loading="lazy" className="h-24 max-w-48 rounded-md border border-slate-200 object-cover hover:opacity-90" />
               </a>
             ))}
+          </div>
+        )}
+        {others.length > 0 && (
+          <div className="mt-2">
+            <AttachmentList attachments={others} />
           </div>
         )}
         <ErrorText error={save.error ?? del.error} />
@@ -148,23 +159,23 @@ function Composer({ taskId }: { taskId: number }) {
   const [files, setFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState('');
   const input = useRef<HTMLInputElement>(null);
-  const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
-  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
+  const previews = useMemo(() => files.map((f) => (isImage(f.type) ? URL.createObjectURL(f) : '')), [files]);
+  useEffect(() => () => previews.forEach((u) => u && URL.revokeObjectURL(u)), [previews]);
 
   const add = (list: File[]) => {
-    const images = list.filter((f) => IMAGE_MIME.test(f.type));
-    if (images.length < list.length) setLocalError('Só imagens PNG, JPG, GIF ou WEBP.');
-    const next = [...files, ...images];
+    const ok = list.filter((f) => ALLOWED_EXT.has(extOf(f.name)));
+    if (ok.length < list.length) setLocalError('Formato não permitido. Use imagem, PDF, Word, Excel, PowerPoint, CSV, TXT ou vídeo.');
+    const next = [...files, ...ok];
     const bytes = next.reduce((s, f) => s + f.size, 0);
-    if (next.length > MAX_IMAGES) return setLocalError(`Máximo de ${MAX_IMAGES} imagens por comentário.`);
-    if (bytes > MAX_TOTAL_BYTES) return setLocalError(`As imagens somariam ${fmtBytes(bytes)}; o limite é 10 MB.`);
-    if (images.length === list.length) setLocalError('');
+    if (next.length > MAX_FILES) return setLocalError(`Máximo de ${MAX_FILES} arquivos por comentário.`);
+    if (bytes > MAX_TOTAL_BYTES) return setLocalError(`Os anexos somariam ${fmtBytes(bytes)}; o limite é 10 MB.`);
+    if (ok.length === list.length) setLocalError('');
     setFiles(next);
   };
 
   // Print copiado (Ctrl+V): vira anexo com nome legível.
   const onPaste = (e: ClipboardEvent) => {
-    const pasted = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+    const pasted = Array.from(e.clipboardData.files).filter((f) => isImage(f.type));
     if (!pasted.length) return;
     e.preventDefault();
     const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
@@ -175,7 +186,7 @@ function Composer({ taskId }: { taskId: number }) {
     mutationFn: () => {
       const form = new FormData();
       form.append('body', body);
-      for (const f of files) form.append('images', f, f.name);
+      for (const f of files) form.append('files', f, f.name);
       return api.upload('POST', `/tasks/${taskId}/comments`, form);
     },
     onSuccess: async () => {
@@ -191,7 +202,7 @@ function Composer({ taskId }: { taskId: number }) {
     <div className="rounded-md border border-slate-200 p-3">
       <textarea
         className="input min-h-20"
-        placeholder="Escreva um comentário… Cole um print com Ctrl+V; links (https://…) ficam clicáveis."
+        placeholder="Escreva um comentário… Anexe arquivos (PDF, Word, Excel, imagens…) ou cole um print com Ctrl+V; links (https://…) ficam clicáveis."
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onPaste={onPaste}
@@ -203,14 +214,24 @@ function Composer({ taskId }: { taskId: number }) {
       {files.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {files.map((f, i) => (
-            <div key={previews[i]} className="relative">
-              <img src={previews[i]} alt={f.name} className="h-16 w-24 rounded-md border border-slate-200 object-cover" />
+            <div key={`${i}-${f.name}-${f.size}`} className="relative">
+              {previews[i] ? (
+                <img src={previews[i]} alt={f.name} className="h-16 w-24 rounded-md border border-slate-200 object-cover" />
+              ) : (
+                <div className="flex h-16 w-40 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs" title={f.name}>
+                  <FileText size={16} className="shrink-0 text-slate-500" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-slate-800">{f.name}</span>
+                    <span className="text-slate-500">{fmtBytes(f.size)}</span>
+                  </span>
+                </div>
+              )}
               <button
                 type="button"
                 className="absolute -top-2 -right-2 rounded-full bg-white p-0.5 text-slate-600 elev-card hover:text-slate-900"
                 onClick={() => setFiles((p) => p.filter((_, j) => j !== i))}
                 aria-label={`Remover ${f.name}`}
-                title="Remover imagem"
+                title="Remover anexo"
               >
                 <X size={14} />
               </button>
@@ -222,7 +243,7 @@ function Composer({ taskId }: { taskId: number }) {
         ref={input}
         type="file"
         multiple
-        accept={IMAGE_ACCEPT}
+        accept={ACCEPT}
         className="hidden"
         onChange={(e) => {
           add(Array.from(e.target.files ?? []));
@@ -232,8 +253,8 @@ function Composer({ taskId }: { taskId: number }) {
       {localError && <p className="mt-2 text-sm text-red-700">{localError}</p>}
       <ErrorText error={send.error} />
       <div className="mt-2 flex items-center gap-2">
-        <button type="button" className="btn-ghost" onClick={() => input.current?.click()} disabled={files.length >= MAX_IMAGES}>
-          <ImagePlus size={16} /> Imagem
+        <button type="button" className="btn-ghost" onClick={() => input.current?.click()} disabled={files.length >= MAX_FILES}>
+          <Paperclip size={16} /> Anexar
         </button>
         <span className="text-xs text-slate-500">Ctrl+Enter para enviar</span>
         <button className="btn-primary ml-auto" disabled={!canSend} onClick={() => send.mutate()}>
