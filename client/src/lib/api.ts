@@ -50,7 +50,6 @@ export function qs(params: Record<string, unknown>): string {
 /** admin: tudo · user (equipe): sem administração e sem exclusão · requester: só solicitações. */
 export type Role = 'admin' | 'user' | 'requester';
 export type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
-export type PlanStatus = 'planejado' | 'em_andamento' | 'concluido' | 'cancelado';
 export type DeadlineState =
   | 'sem_prazo'
   | 'no_prazo'
@@ -101,7 +100,13 @@ export interface Epic {
   okr: string | null;
   owner_id: number | null;
   owner_name: string | null;
-  status: PlanStatus;
+  /** Coluna do quadro (mesmos status das tarefas). */
+  status_id: number;
+  status_name: string;
+  status_color: string;
+  is_completed: number;
+  is_canceled: number;
+  board_position: number | null;
   start_date: string | null;
   end_date: string | null;
   active: number;
@@ -121,7 +126,13 @@ export interface Outcome {
   description: string | null;
   owner_id: number | null;
   owner_name: string | null;
-  status: PlanStatus;
+  /** Coluna do quadro (mesmos status das tarefas). */
+  status_id: number;
+  status_name: string;
+  status_color: string;
+  is_completed: number;
+  is_canceled: number;
+  board_position: number | null;
   start_date: string | null;
   target_date: string | null;
   indicator_name: string | null;
@@ -235,14 +246,14 @@ export interface ConvertedProgress {
   id: number;
   removed: boolean;
   title?: string;
-  // tarefa
+  // tarefa, outcome e épico
   status_name?: string;
   status_color?: string;
+  // tarefa
   assignee_name?: string;
   planned_end_date?: string | null;
   deadline_state?: DeadlineState;
   // outcome / épico
-  plan_status?: PlanStatus;
   tasks_count?: number;
   tasks_done?: number;
 }

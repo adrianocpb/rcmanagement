@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
+import { endOfColumn, fillMissingPositions, moveSchema, positionBefore } from '../../lib/board.js';
 import { badRequest, notFound } from '../../lib/http.js';
 import { addDays, nowIso, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
 import {
@@ -238,7 +239,7 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
         d.estimated_hours,
         d.planned_start_date,
         d.planned_end_date,
-        endOfColumn(db, status.id),
+        endOfColumn(db, 'tasks', status.id),
         dates.started_at,
         dates.completed_at,
         userId,
@@ -324,7 +325,7 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
       nullable('planned_start_date'),
       nullable('planned_end_date'),
       // Mudou de coluna: entra no fim da nova coluna (a ordem manual é ajustada com moveTask).
-      statusChanged ? endOfColumn(db, newStatusId) : current.board_position,
+      statusChanged ? endOfColumn(db, 'tasks', newStatusId) : current.board_position,
       dates.started_at,
       dates.completed_at,
       now,
@@ -339,49 +340,22 @@ export function changeStatus(db: DB, id: number, statusId: number, userId: numbe
   return updateTask(db, id, { status_id: statusId }, userId, now);
 }
 
-// ---------------- Ordem manual no quadro ----------------
-
-const POSITION_STEP = 1024;
-
-/** Posição para entrar no fim de uma coluna. */
-function endOfColumn(db: DB, statusId: number, exceptId = 0): number {
-  const r = db
-    .prepare('SELECT MAX(board_position) AS m FROM tasks WHERE status_id = ? AND deleted_at IS NULL AND id <> ?')
-    .get(statusId, exceptId) as { m: number | null };
-  return (r.m ?? 0) + POSITION_STEP;
-}
-
-/** Renumera uma coluna (passos iguais) quando não sobra espaço entre duas posições vizinhas. */
-function renumberColumn(db: DB, statusId: number) {
-  const ids = db
-    .prepare('SELECT id FROM tasks WHERE status_id = ? ORDER BY board_position IS NULL, board_position, id')
-    .all(statusId) as { id: number }[];
-  const upd = db.prepare('UPDATE tasks SET board_position = ? WHERE id = ?');
-  ids.forEach((r, i) => upd.run((i + 1) * POSITION_STEP, r.id));
-}
+// ---------------- Ordem manual no quadro (lógica em lib/board.ts) ----------------
 
 /**
  * Tarefas sem posição (gravadas direto no banco: seed, importação) vão para o fim da sua coluna,
  * na ordem de prioridade e prazo.
  */
 export function fillMissingBoardPositions(db: DB) {
-  const rows = db
-    .prepare(
-      `SELECT id, status_id FROM tasks WHERE board_position IS NULL
-        ORDER BY CASE priority WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
-                 planned_end_date IS NULL, planned_end_date, id`,
-    )
-    .all() as { id: number; status_id: number }[];
-  const upd = db.prepare('UPDATE tasks SET board_position = ? WHERE id = ?');
-  for (const r of rows) upd.run(endOfColumn(db, r.status_id, r.id), r.id);
-  return rows.length;
+  return fillMissingPositions(
+    db,
+    'tasks',
+    `CASE priority WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
+     planned_end_date IS NULL, planned_end_date, id`,
+  );
 }
 
-export const moveTaskSchema = z.object({
-  status_id: z.coerce.number().int().positive(),
-  /** Tarefa que fica logo abaixo da movida; vazio = fim da coluna. */
-  before_id: z.preprocess((v) => (v === '' || v === undefined ? null : v), z.coerce.number().int().positive().nullable()),
-});
+export const moveTaskSchema = moveSchema;
 
 /**
  * Move a tarefa para uma posição do quadro: coluna (status) e lugar dentro dela.
@@ -397,26 +371,7 @@ export function moveTask(db: DB, id: number, input: unknown, userId: number, now
     if (!current) throw notFound('Tarefa');
     if (current.status_id !== status_id) updateTask(db, id, { status_id }, userId, now);
 
-    const place = () => {
-      if (before_id == null) return endOfColumn(db, status_id, id);
-      const before = db
-        .prepare('SELECT board_position AS p FROM tasks WHERE id = ? AND status_id = ? AND deleted_at IS NULL')
-        .get(before_id, status_id) as { p: number | null } | undefined;
-      if (!before || before.p == null) throw badRequest('A tarefa de referência não está nessa coluna.');
-      const prev = db
-        .prepare(
-          `SELECT MAX(board_position) AS p FROM tasks
-            WHERE status_id = ? AND deleted_at IS NULL AND id <> ? AND board_position < ?`,
-        )
-        .get(status_id, id, before.p) as { p: number | null };
-      const lower = prev.p ?? before.p - 2 * POSITION_STEP;
-      return before.p - lower > 1e-6 ? (lower + before.p) / 2 : null;
-    };
-    let pos = place();
-    if (pos == null) {
-      renumberColumn(db, status_id);
-      pos = place();
-    }
+    const pos = positionBefore(db, 'tasks', id, status_id, before_id);
     db.prepare('UPDATE tasks SET board_position = ?, updated_at = ? WHERE id = ?').run(pos, now, id);
     return getTask(db, id);
   })();

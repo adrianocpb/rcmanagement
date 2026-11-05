@@ -7,7 +7,7 @@ import { api, type Attachment, type ConvertedProgress, type ImprovementRequestDe
 import { useAuth } from '../lib/auth';
 import { CONVERT_LABEL, REQUEST_STATUS, fmtBytes, fmtDate, fmtDateOfInstant } from '../lib/format';
 import { useSectors } from '../lib/queries';
-import { pct, PlanStatusBadge } from '../pages/EpicsPage';
+import { pct } from '../pages/EpicsPage';
 import { DeadlineBadge, ErrorText, Field, Modal, ProgressBar, StatusPill } from './ui';
 
 export const MAX_FILES = 5;
@@ -72,14 +72,8 @@ export function ConvertedProgressView({ progress, linkable }: { progress: Conver
         ) : (
           <span className="font-medium text-slate-700">{label}</span>
         )}
-        {progress.type === 'task' ? (
-          <>
-            <StatusPill name={progress.status_name ?? ''} color={progress.status_color ?? '#94a3b8'} />
-            {progress.deadline_state && <DeadlineBadge state={progress.deadline_state} />}
-          </>
-        ) : (
-          progress.plan_status && <PlanStatusBadge status={progress.plan_status} />
-        )}
+        {progress.status_name && <StatusPill name={progress.status_name} color={progress.status_color ?? '#94a3b8'} />}
+        {progress.type === 'task' && progress.deadline_state && <DeadlineBadge state={progress.deadline_state} />}
       </div>
       {progress.type === 'task' ? (
         <div className="text-xs text-slate-500">

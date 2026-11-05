@@ -44,7 +44,6 @@ export const optionalNumber = z.preprocess(
 export const bool = z.preprocess((v) => v === true || v === 1 || v === '1' || v === 'true', z.boolean());
 
 export const PRIORITIES = ['baixa', 'media', 'alta', 'urgente'] as const;
-export const PLAN_STATUSES = ['planejado', 'em_andamento', 'concluido', 'cancelado'] as const;
 
 /**
  * Para atualizações parciais: mantém apenas as chaves enviadas no corpo da requisição.

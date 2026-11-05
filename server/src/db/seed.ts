@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { hashPassword } from '../lib/auth.js';
 import { addDays, todayLocal, zonedWallTimeToUtc } from '../lib/time.js';
+import { legacyStatusToColumnSql } from '../lib/board.js';
 import { OUTCOME_COLORS } from '../modules/outcomes.js';
 import { fillMissingBoardPositions } from '../modules/tasks/service.js';
 import { migrate, openDatabase, type DB } from './connection.js';
@@ -213,6 +214,8 @@ export function seedDemo(db: DB, now = new Date()) {
     for (const h of hist) insertHistory.run(info.lastInsertRowid, h[0], h[1], h[3], h[2]);
   }
   fillMissingBoardPositions(db);
+  // Épicos e outcomes do seed usam o status antigo; converte para as colunas do quadro.
+  db.exec(legacyStatusToColumnSql('epics') + legacyStatusToColumnSql('outcomes'));
   // Estimativas ICE dos outcomes (impacto, confiança, facilidade) de demonstração.
   const setOutcomeIce = db.prepare('UPDATE outcomes SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
   [

@@ -3,6 +3,8 @@
  * schema_migrations. Para evoluir o banco, adicione uma nova entrada ao final — nunca altere
  * uma migration já aplicada.
  */
+import { legacyStatusToColumnSql } from '../lib/board.js';
+
 export const migrations: {
   id: string;
   sql: string;
@@ -302,6 +304,21 @@ UPDATE outcomes SET color = (
     FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY epic_id, id) AS rn FROM outcomes) x
    WHERE x.id = outcomes.id
 );
+`,
+  },
+  {
+    // Épicos e outcomes passam a usar as mesmas colunas (status) das tarefas, com quadro Kanban
+    // e ordem manual. A coluna antiga "status" (planejado/em andamento/...) deixa de ser usada.
+    id: '012_epics_outcomes_board',
+    sql: `
+ALTER TABLE epics ADD COLUMN status_id INTEGER REFERENCES statuses(id);
+ALTER TABLE epics ADD COLUMN board_position REAL;
+ALTER TABLE outcomes ADD COLUMN status_id INTEGER REFERENCES statuses(id);
+ALTER TABLE outcomes ADD COLUMN board_position REAL;
+${legacyStatusToColumnSql('epics')}
+${legacyStatusToColumnSql('outcomes')}
+CREATE INDEX idx_epics_board ON epics(status_id, board_position);
+CREATE INDEX idx_outcomes_board ON outcomes(status_id, board_position);
 `,
   },
 ];

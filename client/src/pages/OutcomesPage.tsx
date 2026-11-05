@@ -1,16 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Pencil, Plus, Target } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Flag, Pencil, Plus, Target } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Board, BoardCard, byBoardPosition } from '../components/Board';
+import { DataTable, type Column } from '../components/DataTable';
+import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
 import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSortKey } from '../components/Ice';
 import { OriginRequestCard } from '../components/Requests';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
-import { EmptyState, ErrorText, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner } from '../components/ui';
+import { Avatar, ErrorText, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
 import { api, type Outcome, type Task } from '../lib/api';
-import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, PLAN_STATUS, fmtDate, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
-import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
-import { Info, PlanStatusBadge, pct, sortByCreatedDesc } from './EpicsPage';
+import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, fmtDate, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
+import { usePersistentState } from '../lib/prefs';
+import { useEpics, useOutcomes, useStatuses, useUserOptions } from '../lib/queries';
+import { Info, pct, sortByCreatedDesc } from './EpicsPage';
 
 /** Progresso do indicador de negócio: quanto do caminho baseline → meta já foi percorrido. */
 export function indicatorProgress(o: Outcome): number | null {
@@ -67,7 +71,7 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
         <Target size={16} className="mt-0.5 shrink-0" style={{ color: outcomeColor(o.color).dot }} />
         <h3 className="flex-1 font-semibold text-slate-900 group-hover:text-blue-700">{o.name}</h3>
         <IceBadge score={o.ice_score} />
-        <PlanStatusBadge status={o.status} />
+        <StatusPill name={o.status_name} color={o.status_color} />
       </div>
       <div className="mb-3 ml-6 text-xs text-slate-500">
         {o.epic_name} · {o.owner_name ?? 'Sem responsável'} · Criado em {fmtDateOfInstant(o.created_at)}
@@ -88,15 +92,111 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
   );
 }
 
+type OutcomeSort = 'manual' | 'epic' | 'created_at' | IceSortKey;
+const isOutcomeSort = (v: unknown): v is OutcomeSort =>
+  v === 'manual' || v === 'epic' || v === 'created_at' || ICE_SORT_OPTIONS.some((o) => o.key === v);
+
+function OutcomeBoardCard({ outcome: o, overlay }: { outcome: Outcome; overlay?: boolean }) {
+  const c = outcomeColor(o.color);
+  const prog = indicatorProgress(o);
+  return (
+    <BoardCard overlay={overlay} dim={!o.active}>
+      <div className="mb-1.5 flex items-start gap-2">
+        <Target size={14} className="mt-0.5 shrink-0" style={{ color: c.dot }} />
+        <h3 className="flex-1 text-sm leading-snug font-medium text-slate-700">{o.name}</h3>
+        {o.owner_name && <Avatar name={o.owner_name} id={o.owner_id} />}
+      </div>
+      <p className="mb-2 flex items-center gap-1 text-[11px] text-slate-500" title="Épico">
+        <Flag size={11} className="shrink-0" /> <span className="truncate">{o.epic_name}</span>
+      </p>
+      {o.indicator_name && (
+        <div className="mb-1.5 text-[11px] text-slate-500">
+          <div className="truncate" title={o.indicator_name}>
+            {o.indicator_name}: <b className="text-slate-700">{fmtValue(o.current_value, o.indicator_unit)}</b> → {fmtValue(o.target_value, o.indicator_unit)}
+          </div>
+          {prog !== null && (
+            <div className="mt-1 flex items-center gap-2">
+              <ProgressBar value={prog} />
+              <span className="tabular-nums">{prog}%</span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+        <span className="rounded px-1.5 py-0.5 font-medium" style={{ background: c.bg, color: c.text }}>
+          {o.tasks_done}/{o.tasks_count} tarefas
+        </span>
+        <IceBadge score={o.ice_score} compact />
+        {!o.active && <span className="ml-auto">Inativo</span>}
+      </div>
+    </BoardCard>
+  );
+}
+
 export function OutcomesPage() {
-  const [showInactive, setShowInactive] = useState(false);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [prefs, setPrefs] = usePersistentState('outcomes.prefs', {
+    view: 'kanban' as BoardView,
+    sort: 'manual' as OutcomeSort,
+    showInactive: false,
+    epic: '',
+  });
+  const { showInactive } = prefs;
+  const sort: OutcomeSort = isOutcomeSort(prefs.sort) ? prefs.sort : 'manual';
   const { data: outcomes, isLoading, error } = useOutcomes(showInactive);
   const { data: epics } = useEpics();
-  const [epicFilter, setEpicFilter] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [sortKey, setSortKey] = useState<IceSortKey | 'created_at' | ''>('');
-  const filtered = outcomes?.filter((o) => !epicFilter || String(o.epic_id) === epicFilter) ?? [];
-  const list = sortKey === 'created_at' ? sortByCreatedDesc(filtered) : sortByIce(filtered, sortKey);
+  const { data: statuses } = useStatuses();
+  const [editing, setEditing] = useState<{ status_id?: number } | null>(null);
+  const list = outcomes?.filter((o) => !prefs.epic || String(o.epic_id) === prefs.epic) ?? [];
+  const sortColumn = (l: Outcome[]) =>
+    sort === 'manual'
+      ? byBoardPosition(l)
+      : sort === 'created_at'
+        ? sortByCreatedDesc(l)
+        : sort === 'epic'
+          ? [...l].sort((a, b) => a.epic_name.localeCompare(b.epic_name) || a.name.localeCompare(b.name))
+          : sortByIce(l, sort);
+  const order = boardOrderKey(statuses);
+
+  const columns: Column<Outcome>[] = [
+    { key: 'name', label: 'Outcome', sort: (o) => o.name.toLowerCase(), render: (o) => <OutcomeTag name={o.name} color={o.color} className="text-xs" />, className: 'min-w-56', wrap: true },
+    { key: 'epic', label: 'Épico', sort: (o) => o.epic_name, render: (o) => o.epic_name, wrap: true, className: 'min-w-40' },
+    { key: 'status', label: 'Status', sort: order, render: (o) => <StatusPill name={o.status_name} color={o.status_color} /> },
+    { key: 'owner', label: 'Responsável', sort: (o) => o.owner_name, render: (o) => o.owner_name ?? '—' },
+    {
+      key: 'indicator',
+      label: 'Indicador (atual → meta)',
+      sort: (o) => indicatorProgress(o),
+      defaultDir: -1,
+      render: (o) =>
+        o.indicator_name ? (
+          <span title={o.indicator_name}>
+            {fmtValue(o.current_value, o.indicator_unit)} → {fmtValue(o.target_value, o.indicator_unit)}
+            {indicatorProgress(o) !== null && <span className="ml-1 text-xs text-slate-500">({indicatorProgress(o)}%)</span>}
+          </span>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'tasks',
+      label: 'Tarefas',
+      sort: (o) => pct(o.tasks_done, o.tasks_count),
+      defaultDir: -1,
+      render: (o) => (
+        <div className="flex min-w-32 items-center gap-2 text-xs">
+          <ProgressBar value={pct(o.tasks_done, o.tasks_count)} />
+          <span className="tabular-nums">
+            {o.tasks_done}/{o.tasks_count}
+          </span>
+        </div>
+      ),
+    },
+    { key: 'ice', label: 'ICE', sort: (o) => o.ice_score, render: (o) => <IceBadge score={o.ice_score} compact />, defaultDir: -1 },
+    { key: 'target', label: 'Data alvo', sort: (o) => o.target_date, render: (o) => fmtDate(o.target_date) },
+    { key: 'created', label: 'Criado em', sort: (o) => o.created_at, render: (o) => fmtDateOfInstant(o.created_at), defaultDir: -1 },
+  ];
 
   return (
     <div>
@@ -105,21 +205,31 @@ export function OutcomesPage() {
         subtitle="Resultados de negócio que as tarefas ajudam a produzir."
         actions={
           <>
+            <ViewToggle value={prefs.view} onChange={(view) => setPrefs((p) => ({ ...p, view }))} />
+            {prefs.view === 'kanban' && (
+              <select
+                className="input w-auto py-1.5"
+                value={sort}
+                onChange={(e) => setPrefs((p) => ({ ...p, sort: e.target.value as OutcomeSort }))}
+                aria-label="Ordenar outcomes"
+                title="Na ordem do quadro, arraste os cards para definir a prioridade dentro de cada coluna"
+              >
+                <option value="manual">Ordenar: Ordem do quadro (arrastar para priorizar)</option>
+                <option value="epic">Ordenar: épico e nome</option>
+                <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
+                {ICE_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    Ordenar: {opt.label} (maior primeiro)
+                  </option>
+                ))}
+              </select>
+            )}
             <select
-              className="input w-auto py-1"
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as IceSortKey | 'created_at' | '')}
-              aria-label="Ordenar outcomes"
+              className={`input w-auto py-1.5${prefs.epic ? ' filter-active' : ''}`}
+              value={prefs.epic}
+              onChange={(e) => setPrefs((p) => ({ ...p, epic: e.target.value }))}
+              aria-label="Filtrar por épico"
             >
-              <option value="">Ordenar: épico e nome</option>
-              <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
-              {ICE_SORT_OPTIONS.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  Ordenar: {opt.label} (maior primeiro)
-                </option>
-              ))}
-            </select>
-            <select className={`input w-auto py-1${epicFilter ? ' filter-active' : ''}`} value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)}>
               <option value="">Épico: todos</option>
               {epics?.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -130,23 +240,49 @@ export function OutcomesPage() {
             <label
               className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
             >
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Inativos
+              <input type="checkbox" checked={showInactive} onChange={(e) => setPrefs((p) => ({ ...p, showInactive: e.target.checked }))} /> Inativos
             </label>
-            <button className="btn-primary" onClick={() => setCreating(true)}>
+            <button className="btn-primary" onClick={() => setEditing({})}>
               <Plus size={16} /> Novo outcome
             </button>
           </>
         }
       />
       <ErrorText error={error} />
-      {isLoading && <Spinner />}
-      {outcomes && list.length === 0 && <EmptyState>Nenhum outcome encontrado.</EmptyState>}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {list.map((o) => (
-          <OutcomeCard key={o.id} outcome={o} />
-        ))}
-      </div>
-      {creating && <OutcomeFormModal onClose={() => setCreating(false)} defaultEpicId={epicFilter ? Number(epicFilter) : undefined} />}
+      {isLoading || !statuses ? (
+        <Spinner />
+      ) : prefs.view === 'kanban' ? (
+        <Board
+          items={list}
+          statuses={statuses}
+          queryKey={['outcomes', { includeInactive: showInactive }]}
+          manual={sort === 'manual'}
+          sortColumn={sortColumn}
+          move={({ id, status_id, before_id }) => api.patch(`/outcomes/${id}/position`, { status_id, before_id })}
+          onSettled={() => Promise.all(['outcomes', 'outcome', 'epic'].map((k) => qc.invalidateQueries({ queryKey: [k] })))}
+          renderCard={(o, overlay) => <OutcomeBoardCard outcome={o} overlay={overlay} />}
+          onOpen={(o) => navigate(`/outcomes/${o.id}`)}
+          onAdd={(status_id) => setEditing({ status_id })}
+          noun={{ one: 'outcome', many: 'outcomes' }}
+        />
+      ) : (
+        <DataTable
+          rows={list}
+          columns={columns}
+          defaultSort={{ key: 'status', dir: 1 }}
+          onRowClick={(o) => navigate(`/outcomes/${o.id}`)}
+          rowClassName={(o) => (o.active ? '' : 'opacity-60')}
+          empty="Nenhum outcome encontrado."
+          count={(n) => `${n} outcome(s)`}
+        />
+      )}
+      {editing && (
+        <OutcomeFormModal
+          onClose={() => setEditing(null)}
+          defaultEpicId={prefs.epic ? Number(prefs.epic) : undefined}
+          defaultStatusId={editing.status_id}
+        />
+      )}
     </div>
   );
 }
@@ -174,7 +310,7 @@ export function OutcomeDetailPage() {
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="size-3 shrink-0 rounded-full" style={{ background: outcomeColor(o.color).dot }} title={`Cor: ${outcomeColor(o.color).label}`} />
                 <h1 className="text-xl font-semibold text-slate-900">{o.name}</h1>
-                <PlanStatusBadge status={o.status} />
+                <StatusPill name={o.status_name} color={o.status_color} />
               </div>
               <p className="text-sm text-slate-500">
                 Épico:{' '}
@@ -231,6 +367,7 @@ export function OutcomeDetailPage() {
 export function OutcomeFormModal({
   outcome,
   defaultEpicId,
+  defaultStatusId,
   onClose,
   title,
   banner,
@@ -240,6 +377,8 @@ export function OutcomeFormModal({
 }: {
   outcome?: Outcome;
   defaultEpicId?: number;
+  /** Coluna do quadro de um novo outcome (botão + da coluna). */
+  defaultStatusId?: number;
   onClose: () => void;
   title?: string;
   banner?: ReactNode;
@@ -258,7 +397,7 @@ export function OutcomeFormModal({
     description: s(outcome?.description ?? prefill?.description),
     epic_id: s(outcome?.epic_id ?? defaultEpicId),
     owner_id: s(outcome?.owner_id),
-    status: outcome?.status ?? 'planejado',
+    status_id: s(outcome?.status_id ?? defaultStatusId),
     start_date: s(outcome?.start_date),
     target_date: s(outcome?.target_date),
     indicator_name: s(outcome?.indicator_name ?? prefill?.indicator_name),
@@ -367,13 +506,7 @@ export function OutcomeFormModal({
             </select>
           </Field>
           <Field label="Status">
-            <select className="input" value={f.status} onChange={set('status')}>
-              {Object.entries(PLAN_STATUS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+            <StatusSelect value={f.status_id} onChange={(v) => setF((p) => ({ ...p, status_id: v }))} />
           </Field>
           <Field label="Data inicial">
             <input className="input" type="date" value={f.start_date} onChange={set('start_date')} />

@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Flag, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, EmptyState } from '../components/ui';
-import { api, type Epic, type PlanStatus } from '../lib/api';
-import { PLAN_STATUS, fmtDate, fmtDateOfInstant } from '../lib/format';
-import { useEpics, useOutcomes, useUserOptions } from '../lib/queries';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Board, BoardCard, byBoardPosition } from '../components/Board';
+import { DataTable, type Column } from '../components/DataTable';
+import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
+import { Avatar, EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
+import { api, type Epic } from '../lib/api';
+import { fmtDate, fmtDateOfInstant } from '../lib/format';
+import { usePersistentState } from '../lib/prefs';
+import { useEpics, useOutcomes, useStatuses, useUserOptions } from '../lib/queries';
 import { OriginRequestCard } from '../components/Requests';
 import { OutcomeCard, OutcomeFormModal } from './OutcomesPage';
 
@@ -16,17 +20,77 @@ export function sortByCreatedDesc<T extends { created_at: string }>(list: T[]): 
 
 export const pct = (done: number, total: number) => (total ? Math.round((done / total) * 100) : 0);
 
-export function PlanStatusBadge({ status }: { status: PlanStatus }) {
-  const s = PLAN_STATUS[status];
-  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${s.cls}`}>{s.label}</span>;
+type EpicSort = 'manual' | 'name' | 'created_at';
+
+const epicProgress = (e: Epic) => pct(e.tasks_done, e.tasks_count);
+
+function EpicBoardCard({ epic: e, overlay }: { epic: Epic; overlay?: boolean }) {
+  const progress = epicProgress(e);
+  return (
+    <BoardCard overlay={overlay} dim={!e.active}>
+      <div className="mb-1.5 flex items-start gap-2">
+        <Flag size={14} className="mt-0.5 shrink-0 text-slate-500" />
+        <h3 className="flex-1 text-sm leading-snug font-medium text-slate-700">{e.name}</h3>
+        {e.owner_name && <Avatar name={e.owner_name} id={e.owner_id} />}
+      </div>
+      {e.okr && <p className="mb-2 line-clamp-2 text-[11px] text-slate-500">🎯 {e.okr}</p>}
+      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        <ProgressBar value={progress} />
+        <span className="font-medium text-slate-700 tabular-nums">{progress}%</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
+        <span>
+          <b className="text-slate-700">{e.outcomes_count}</b> outcomes
+        </span>
+        <span>
+          <b className="text-slate-700">{e.tasks_done}</b>/{e.tasks_count} tarefas
+        </span>
+        {!e.active && <span className="ml-auto">Inativo</span>}
+      </div>
+    </BoardCard>
+  );
 }
 
 export function EpicsPage() {
-  const [showInactive, setShowInactive] = useState(false);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [prefs, setPrefs] = usePersistentState('epics.prefs', { view: 'kanban' as BoardView, sort: 'manual' as EpicSort, showInactive: false });
+  const { showInactive } = prefs;
   const { data: allEpics, isLoading, error } = useEpics(showInactive);
-  const [sortKey, setSortKey] = useState<'' | 'created_at'>('');
-  const epics = allEpics && sortKey === 'created_at' ? sortByCreatedDesc(allEpics) : allEpics;
-  const [editing, setEditing] = useState<Epic | 'new' | null>(null);
+  const { data: statuses } = useStatuses();
+  const [editing, setEditing] = useState<Epic | { status_id: number } | 'new' | null>(null);
+  const epics = allEpics ?? [];
+  const sortColumn = (l: Epic[]) =>
+    prefs.sort === 'name'
+      ? [...l].sort((a, b) => a.name.localeCompare(b.name))
+      : prefs.sort === 'created_at'
+        ? sortByCreatedDesc(l)
+        : byBoardPosition(l);
+  const order = boardOrderKey(statuses);
+
+  const columns: Column<Epic>[] = [
+    { key: 'name', label: 'Épico', sort: (e) => e.name.toLowerCase(), render: (e) => <span className="font-medium text-slate-900">{e.name}</span>, className: 'min-w-56', wrap: true },
+    { key: 'status', label: 'Status', sort: order, render: (e) => <StatusPill name={e.status_name} color={e.status_color} /> },
+    { key: 'okr', label: 'Objetivo / OKR', sort: (e) => e.okr, render: (e) => <span className="line-clamp-2 text-slate-600">{e.okr ?? '—'}</span>, className: 'min-w-48', wrap: true },
+    { key: 'owner', label: 'Responsável', sort: (e) => e.owner_name, render: (e) => e.owner_name ?? '—' },
+    { key: 'outcomes', label: 'Outcomes', sort: (e) => e.outcomes_count, render: (e) => e.outcomes_count, defaultDir: -1 },
+    {
+      key: 'progress',
+      label: 'Progresso',
+      sort: epicProgress,
+      defaultDir: -1,
+      render: (e) => (
+        <div className="flex min-w-36 items-center gap-2 text-xs">
+          <ProgressBar value={epicProgress(e)} />
+          <span className="tabular-nums">
+            {e.tasks_done}/{e.tasks_count}
+          </span>
+        </div>
+      ),
+    },
+    { key: 'period', label: 'Período', sort: (e) => e.start_date, render: (e) => `${fmtDate(e.start_date)} → ${fmtDate(e.end_date)}` },
+    { key: 'created', label: 'Criado em', sort: (e) => e.created_at, render: (e) => fmtDateOfInstant(e.created_at), defaultDir: -1 },
+  ];
 
   return (
     <div>
@@ -35,19 +99,25 @@ export function EpicsPage() {
         subtitle="Nível estratégico: cada épico agrupa outcomes e se conecta a um objetivo/OKR."
         actions={
           <>
-            <select
-              className="input w-auto py-1"
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as '' | 'created_at')}
-              aria-label="Ordenar épicos"
-            >
-              <option value="">Ordenar: nome</option>
-              <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
-            </select>
+            <ViewToggle value={prefs.view} onChange={(view) => setPrefs((p) => ({ ...p, view }))} />
+            {prefs.view === 'kanban' && (
+              <select
+                className="input w-auto py-1.5"
+                value={prefs.sort}
+                onChange={(e) => setPrefs((p) => ({ ...p, sort: e.target.value as EpicSort }))}
+                aria-label="Ordenar épicos"
+                title="Na ordem do quadro, arraste os cards para definir a prioridade dentro de cada coluna"
+              >
+                <option value="manual">Ordenar: Ordem do quadro (arrastar para priorizar)</option>
+                <option value="name">Ordenar: nome</option>
+                <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
+              </select>
+            )}
             <label
               className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
             >
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Mostrar inativos
+              <input type="checkbox" checked={showInactive} onChange={(e) => setPrefs((p) => ({ ...p, showInactive: e.target.checked }))} /> Mostrar
+              inativos
             </label>
             <button className="btn-primary" onClick={() => setEditing('new')}>
               <Plus size={16} /> Novo épico
@@ -56,37 +126,40 @@ export function EpicsPage() {
         }
       />
       <ErrorText error={error} />
-      {isLoading && <Spinner />}
-      {epics?.length === 0 && <EmptyState>Nenhum épico cadastrado.</EmptyState>}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {epics?.map((e) => (
-          <Link key={e.id} to={`/epicos/${e.id}`} className={`card group block p-4 transition hover:border-blue-300 hover:shadow-md ${e.active ? '' : 'opacity-60'}`}>
-            <div className="mb-2 flex items-start gap-2">
-              <Flag size={16} className="mt-0.5 shrink-0 text-blue-600" />
-              <h2 className="flex-1 font-semibold text-slate-900 group-hover:text-blue-700">{e.name}</h2>
-              <PlanStatusBadge status={e.status} />
-            </div>
-            {e.okr && <p className="mb-3 line-clamp-2 text-xs text-slate-500">🎯 {e.okr}</p>}
-            <div className="mb-1 flex justify-between text-xs text-slate-500">
-              <span>Progresso</span>
-              <span className="font-medium text-slate-700">{pct(e.tasks_done, e.tasks_count)}%</span>
-            </div>
-            <ProgressBar value={pct(e.tasks_done, e.tasks_count)} />
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-              <span>
-                <b className="text-slate-700">{e.outcomes_count}</b> outcomes
-              </span>
-              <span>
-                <b className="text-slate-700">{e.tasks_done}</b>/{e.tasks_count} tarefas concluídas
-              </span>
-              <span className="ml-auto">
-                {e.owner_name ?? 'Sem responsável'} · Criado em {fmtDateOfInstant(e.created_at)}
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
-      {editing && <EpicFormModal epic={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+      {isLoading || !statuses ? (
+        <Spinner />
+      ) : prefs.view === 'kanban' ? (
+        <Board
+          items={epics}
+          statuses={statuses}
+          queryKey={['epics', { includeInactive: showInactive }]}
+          manual={prefs.sort === 'manual'}
+          sortColumn={sortColumn}
+          move={({ id, status_id, before_id }) => api.patch(`/epics/${id}/position`, { status_id, before_id })}
+          onSettled={() => Promise.all([qc.invalidateQueries({ queryKey: ['epics'] }), qc.invalidateQueries({ queryKey: ['epic'] })])}
+          renderCard={(e, overlay) => <EpicBoardCard epic={e} overlay={overlay} />}
+          onOpen={(e) => navigate(`/epicos/${e.id}`)}
+          onAdd={(status_id) => setEditing({ status_id })}
+          noun={{ one: 'épico', many: 'épicos' }}
+        />
+      ) : (
+        <DataTable
+          rows={epics}
+          columns={columns}
+          defaultSort={{ key: 'status', dir: 1 }}
+          onRowClick={(e) => navigate(`/epicos/${e.id}`)}
+          rowClassName={(e) => (e.active ? '' : 'opacity-60')}
+          empty="Nenhum épico cadastrado."
+          count={(n) => `${n} épico(s)`}
+        />
+      )}
+      {editing && (
+        <EpicFormModal
+          epic={editing !== 'new' && 'id' in editing ? editing : undefined}
+          defaultStatusId={editing !== 'new' && !('id' in editing) ? editing.status_id : undefined}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -113,7 +186,7 @@ export function EpicDetailPage() {
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-2">
               <h1 className="text-xl font-semibold text-slate-900">{epic.name}</h1>
-              <PlanStatusBadge status={epic.status} />
+              <StatusPill name={epic.status_name} color={epic.status_color} />
               {!epic.active && <span className="rounded bg-slate-200 px-1.5 text-xs">Inativo</span>}
             </div>
             {epic.okr && <p className="text-sm text-slate-600">🎯 {epic.okr}</p>}
@@ -172,6 +245,7 @@ export function Info({ label, value }: { label: string; value: React.ReactNode }
 
 export function EpicFormModal({
   epic,
+  defaultStatusId,
   onClose,
   title,
   banner,
@@ -180,6 +254,8 @@ export function EpicFormModal({
   onSaved,
 }: {
   epic?: Epic;
+  /** Coluna do quadro de um novo épico (botão + da coluna). */
+  defaultStatusId?: number;
   onClose: () => void;
   title?: string;
   banner?: React.ReactNode;
@@ -196,7 +272,7 @@ export function EpicFormModal({
     description: epic?.description ?? prefill?.description ?? '',
     okr: epic?.okr ?? '',
     owner_id: epic?.owner_id ? String(epic.owner_id) : '',
-    status: epic?.status ?? 'planejado',
+    status_id: String(epic?.status_id ?? defaultStatusId ?? ''),
     start_date: epic?.start_date ?? '',
     end_date: epic?.end_date ?? '',
     active: epic ? !!epic.active : true,
@@ -255,13 +331,7 @@ export function EpicFormModal({
             </select>
           </Field>
           <Field label="Status">
-            <select className="input" value={f.status} onChange={set('status')}>
-              {Object.entries(PLAN_STATUS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+            <StatusSelect value={f.status_id} onChange={(v) => setF((p) => ({ ...p, status_id: v }))} />
           </Field>
           <Field label="Data inicial">
             <input className="input" type="date" value={f.start_date} onChange={set('start_date')} />

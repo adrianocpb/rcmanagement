@@ -102,11 +102,15 @@ export function statusesRouter(db: DB) {
     };
     assertFlags(next);
     if (!next.active) {
-      const inUse = db
-        .prepare('SELECT COUNT(*) AS n FROM tasks WHERE status_id = ? AND deleted_at IS NULL')
-        .get(id) as { n: number };
-      if (inUse.n > 0) {
-        throw badRequest(`Não é possível desativar: ${inUse.n} tarefa(s) estão neste status. Mova-as antes.`);
+      const count = (sql: string) => (db.prepare(sql).get(id) as { n: number }).n;
+      const inUse = [
+        [count('SELECT COUNT(*) AS n FROM tasks WHERE status_id = ? AND deleted_at IS NULL'), 'tarefa(s)'],
+        [count('SELECT COUNT(*) AS n FROM outcomes WHERE status_id = ? AND active = 1'), 'outcome(s)'],
+        [count('SELECT COUNT(*) AS n FROM epics WHERE status_id = ? AND active = 1'), 'épico(s)'],
+      ].filter(([n]) => Number(n) > 0);
+      if (inUse.length) {
+        const what = inUse.map(([n, label]) => `${n} ${label}`).join(', ');
+        throw badRequest(`Não é possível desativar: ${what} estão neste status. Mova-os antes.`);
       }
       if (next.is_default) throw badRequest('O status padrão de novas tarefas não pode ser desativado.');
     }

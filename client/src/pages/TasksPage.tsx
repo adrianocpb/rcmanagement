@@ -1,38 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { Columns3, List, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CARD_SORT_OPTIONS, isCardSort, Kanban, type CardSort } from '../components/Kanban';
 import { EMPTY_FILTERS, TaskFilters, type TaskFilterValues } from '../components/TaskFilters';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
-import { ErrorText, PageHeader, Spinner } from '../components/ui';
+import { ErrorText, PageHeader, Spinner, ViewToggle, type BoardView } from '../components/ui';
 import { api, qs, type Task } from '../lib/api';
+import { usePersistentState } from '../lib/prefs';
 import { useStatuses } from '../lib/queries';
-
-/** Preferências por usuário no navegador (visualização e filtros). Falhas de storage são ignoradas. */
-function usePersistentState<T>(key: string, initial: T) {
-  const [v, setV] = useState<T>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? { ...initial, ...JSON.parse(raw) } : initial;
-    } catch {
-      return initial;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(v));
-    } catch {
-      /* ignora */
-    }
-  }, [key, v]);
-  return [v, setV] as const;
-}
 
 export function TasksPage() {
   const [prefs, setPrefs] = usePersistentState('tasks.prefs', {
-    view: 'kanban' as 'kanban' | 'list',
+    view: 'kanban' as BoardView,
     cardSort: 'manual' as CardSort,
   });
   const [filters, setFilters] = usePersistentState<TaskFilterValues>('tasks.filters', EMPTY_FILTERS);
@@ -80,26 +61,7 @@ export function TasksPage() {
         }
         actions={
           <>
-            <div className="inline-flex rounded-md border border-slate-300 bg-white p-0.5 shadow-xs" role="tablist">
-              {(
-                [
-                  ['kanban', 'Kanban', Columns3],
-                  ['list', 'Lista', List],
-                ] as const
-              ).map(([key, label, Icon]) => (
-                <button
-                  key={key}
-                  role="tab"
-                  aria-selected={prefs.view === key}
-                  onClick={() => setPrefs((p) => ({ ...p, view: key }))}
-                  className={`inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium ${
-                    prefs.view === key ? 'bg-blue-600 text-[#eff0eb] shadow-[0_2px_6px_0_rgba(14,14,14,0.24)]' : 'text-slate-600 hover:bg-[rgba(14,14,14,0.05)]'
-                  }`}
-                >
-                  <Icon size={14} /> {label}
-                </button>
-              ))}
-            </div>
+            <ViewToggle value={prefs.view} onChange={(view) => setPrefs((p) => ({ ...p, view }))} />
             {prefs.view === 'kanban' && (
               <select
                 className="input w-auto py-1.5"

@@ -19,6 +19,8 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
 - **Ordem do quadro**: no Kanban, arraste os cards para definir a ordem dentro de cada coluna (o PO
   prioriza e quem executa puxa o primeiro). Também dá para ordenar por prioridade e prazo, conclusão
   prevista ou data de criação.
+- **Épicos e outcomes também em Kanban ou Lista**, com as mesmas colunas (status) das tarefas:
+  arraste para mudar de coluna ou priorizar dentro dela; na lista, clique no cabeçalho para ordenar.
 - **Priorização ICE** nos outcomes: Impacto, Confiança e Facilidade (1–10) e ICE score calculado
   automaticamente (impacto × confiança × facilidade), com ordenação por qualquer um deles.
 - **Dashboard**: Cycle Time, Lead Time, Throughput, tarefas criadas, WIP, atrasadas e Aging, com

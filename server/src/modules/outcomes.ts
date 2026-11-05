@@ -2,10 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
+import { moveItem, placement } from '../lib/board.js';
 import { badRequest, idParam, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
 import {
-  PLAN_STATUSES,
   bool,
   iceValue,
   optionalDate,
@@ -35,7 +35,8 @@ const schema = z.object({
   description: optionalText,
   epic_id: requiredId,
   owner_id: optionalId,
-  status: z.enum(PLAN_STATUSES).default('planejado'),
+  /** Coluna do quadro (mesmos status das tarefas). Vazio = status padrão. */
+  status_id: optionalId,
   start_date: optionalDate,
   target_date: optionalDate,
   indicator_name: optionalText,
@@ -52,13 +53,16 @@ const schema = z.object({
 
 const OUTCOME_SELECT = `
   SELECT o.*, e.name AS epic_name, u.name AS owner_name,
+         st.name AS status_name, st.color AS status_color,
+         st.is_completion_status AS is_completed, st.is_cancel_status AS is_canceled,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
            WHERE t.outcome_id = o.id AND t.deleted_at IS NULL AND s.is_cancel_status = 0) AS tasks_count,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
            WHERE t.outcome_id = o.id AND t.deleted_at IS NULL AND s.is_completion_status = 1) AS tasks_done
     FROM outcomes o
     JOIN epics e ON e.id = o.epic_id
-    LEFT JOIN users u ON u.id = o.owner_id`;
+    LEFT JOIN users u ON u.id = o.owner_id
+    LEFT JOIN statuses st ON st.id = o.status_id`;
 
 function assertEpic(db: DB, id: number) {
   if (!db.prepare('SELECT id FROM epics WHERE id = ?').get(id)) throw badRequest('Épico inválido.');
@@ -69,17 +73,18 @@ export function createOutcome(db: DB, input: unknown) {
   const d = schema.parse(input);
   assertEpic(db, d.epic_id);
   const now = nowIso();
+  const p = placement(db, 'outcomes', d.status_id);
   const info = db
     .prepare(
-      `INSERT INTO outcomes (epic_id, name, description, owner_id, status, start_date, target_date, indicator_name,
+      `INSERT INTO outcomes (epic_id, name, description, owner_id, status_id, board_position, start_date, target_date, indicator_name,
                              indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
                              ice_ease, active, color, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
-      d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
-      d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
-      d.ice_ease, +d.active, d.color ?? nextColor(db), now, now,
+      d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
+      d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
+      d.ice_confidence, d.ice_ease, +d.active, d.color ?? nextColor(db), now, now,
     );
   return db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
@@ -117,24 +122,36 @@ export function outcomesRouter(db: DB) {
 
   r.put('/:id', (req, res) => {
     const id = idParam(req);
-    if (!db.prepare('SELECT id FROM outcomes WHERE id = ?').get(id)) throw notFound('Outcome');
+    const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ?').get(id) as
+      | { id: number; status_id: number | null; board_position: number | null }
+      | undefined;
+    if (!current) throw notFound('Outcome');
     const d = schema.parse(req.body);
     ensureEpic(d.epic_id);
+    const p = placement(db, 'outcomes', d.status_id, current);
     db.transaction(() => {
       db.prepare(
-        `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status = ?, start_date = ?,
+        `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status_id = ?, board_position = ?,
+                             start_date = ?,
                              target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
                              target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
                              active = ?, color = COALESCE(?, color), updated_at = ?
           WHERE id = ?`,
       ).run(
-        d.epic_id, d.name, d.description, d.owner_id, d.status, d.start_date, d.target_date, d.indicator_name,
-        d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact, d.ice_confidence,
-        d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
+        d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
+        d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
+        d.ice_confidence, d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
       );
       // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
       db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);
     })();
+    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id));
+  });
+
+  r.patch('/:id/position', (req, res) => {
+    const id = idParam(req);
+    if (!db.prepare('SELECT id FROM outcomes WHERE id = ?').get(id)) throw notFound('Outcome');
+    moveItem(db, 'outcomes', id, req.body, nowIso());
     res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id));
   });
 

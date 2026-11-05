@@ -1,4 +1,4 @@
-import type { ConvertType, DeadlineState, PlanStatus, Priority, RequestStatus, Role } from './api';
+import type { ConvertType, DeadlineState, Priority, RequestStatus, Role } from './api';
 
 /**
  * Fuso horário da aplicação. Vem do servidor (/api/config) para que toda a exibição use o mesmo
@@ -128,13 +128,6 @@ export const OUTCOME_COLOR: Record<string, { label: string; bg: string; text: st
 export const OUTCOME_COLOR_KEYS = Object.keys(OUTCOME_COLOR);
 const NO_COLOR = { label: 'Sem cor', bg: 'rgba(107,107,102,0.16)', text: '#2e2e2c', dot: '#6b6b66' };
 export const outcomeColor = (key: string | null | undefined) => (key && OUTCOME_COLOR[key]) || NO_COLOR;
-
-export const PLAN_STATUS: Record<PlanStatus, { label: string; cls: string }> = {
-  planejado: { label: 'Planejado', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600' },
-  em_andamento: { label: 'Em andamento', cls: 'bg-blue-50 text-blue-700' },
-  concluido: { label: 'Concluído', cls: 'bg-green-50 text-green-700' },
-  cancelado: { label: 'Cancelado', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600 line-through' },
-};
 
 export const DEADLINE: Record<DeadlineState, { label: string; cls: string } | null> = {
   sem_prazo: null,

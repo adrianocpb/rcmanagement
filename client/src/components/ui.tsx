@@ -1,4 +1,4 @@
-import { Target, X } from 'lucide-react';
+import { Columns3, List, Target, X } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import type { DeadlineState, Priority } from '../lib/api';
 import { DEADLINE, PRIORITY, initials, outcomeColor } from '../lib/format';
@@ -78,6 +78,34 @@ export function OutcomeTag({ name, color, clamp, className = '' }: { name: strin
       <Target size={12} className="mt-px shrink-0" />
       <span className={clamp ? 'line-clamp-2' : ''}>{name}</span>
     </span>
+  );
+}
+
+export type BoardView = 'kanban' | 'list';
+
+/** Alternância Kanban / Lista (tarefas, outcomes e épicos). */
+export function ViewToggle({ value, onChange }: { value: BoardView; onChange: (v: BoardView) => void }) {
+  return (
+    <div className="inline-flex rounded-md border border-slate-300 bg-white p-0.5 shadow-xs" role="tablist">
+      {(
+        [
+          ['kanban', 'Kanban', Columns3],
+          ['list', 'Lista', List],
+        ] as const
+      ).map(([key, label, Icon]) => (
+        <button
+          key={key}
+          role="tab"
+          aria-selected={value === key}
+          onClick={() => onChange(key)}
+          className={`inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium ${
+            value === key ? 'bg-blue-600 text-[#eff0eb] shadow-[0_2px_6px_0_rgba(14,14,14,0.24)]' : 'text-slate-600 hover:bg-[rgba(14,14,14,0.05)]'
+          }`}
+        >
+          <Icon size={14} /> {label}
+        </button>
+      ))}
+    </div>
   );
 }
 

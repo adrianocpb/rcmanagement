@@ -332,6 +332,69 @@ describe('data de criação de épicos e outcomes', () => {
   });
 });
 
+describe('quadro de épicos e outcomes (mesmas colunas das tarefas)', () => {
+  it('seed e migration colocam todos em colunas; novos entram no status padrão, no fim', async () => {
+    const statuses = (await ctx.agent.get('/api/statuses').expect(200)).body as { id: number; name: string; is_default: number }[];
+    const def = statuses.find((s) => s.is_default)!;
+    for (const path of ['/api/epics', '/api/outcomes']) {
+      const list = (await ctx.agent.get(path).expect(200)).body as { status_id: number; status_name: string; board_position: number }[];
+      expect(list.every((x) => x.status_id && x.status_name && x.board_position)).toBe(true);
+    }
+    const e = (await ctx.agent.post('/api/epics').send({ name: 'Épico quadro' }).expect(201)).body;
+    expect(e.status_id).toBe(def.id);
+    const o = (await ctx.agent.post('/api/outcomes').send({ name: 'Outcome quadro', epic_id: e.id }).expect(201)).body;
+    expect(o.status_name).toBe(def.name);
+  });
+
+  it('arrastar muda a coluna e a ordem; editar sem mudar o status mantém o lugar', async () => {
+    const statuses = (await ctx.agent.get('/api/statuses').expect(200)).body as { id: number; is_completion_status: number }[];
+    const done = statuses.find((s) => s.is_completion_status)!;
+    const e = (await ctx.agent.post('/api/epics').send({ name: 'Ép' }).expect(201)).body;
+    const [a, b, c] = await Promise.all(
+      ['A', 'B', 'C'].map(async (n) => (await ctx.agent.post('/api/outcomes').send({ name: n, epic_id: e.id, status_id: done.id }).expect(201)).body),
+    );
+    const order = async () =>
+      ((await ctx.agent.get('/api/outcomes').expect(200)).body as { id: number; status_id: number; board_position: number }[])
+        .filter((x) => [a.id, b.id, c.id].includes(x.id))
+        .sort((x, y) => x.board_position - y.board_position)
+        .map((x) => x.id);
+    const before = await order();
+    const last = before[2];
+    await ctx.agent.patch(`/api/outcomes/${last}/position`).send({ status_id: done.id, before_id: before[0] }).expect(200);
+    expect(await order()).toEqual([last, before[0], before[1]]);
+
+    const moved = (await ctx.agent.patch(`/api/outcomes/${a.id}/position`).send({ status_id: statuses[0].id, before_id: null }).expect(200)).body;
+    expect(moved.status_id).toBe(statuses[0].id);
+    await ctx.agent.patch(`/api/outcomes/${a.id}/position`).send({ status_id: done.id, before_id: 999999 }).expect(400);
+
+    const pos = moved.board_position;
+    const edited = (await ctx.agent.put(`/api/outcomes/${a.id}`).send({ name: 'A2', epic_id: e.id }).expect(200)).body;
+    expect(edited.status_id).toBe(statuses[0].id);
+    expect(edited.board_position).toBe(pos);
+
+    const ep = (await ctx.agent.patch(`/api/epics/${e.id}/position`).send({ status_id: done.id }).expect(200)).body;
+    expect(ep.status_id).toBe(done.id);
+    expect(ep.is_completed).toBe(1);
+  });
+
+  it('não desativa status com outcomes ou épicos ativos', async () => {
+    const statuses = (await ctx.agent.get('/api/statuses').expect(200)).body as { id: number; is_default: number }[];
+    const s = statuses.find((x) => !x.is_default)!;
+    const e = (await ctx.agent.post('/api/epics').send({ name: 'Ép status', status_id: s.id }).expect(201)).body;
+    // move as tarefas desse status para outro, para testar só o épico
+    const tasks = (await ctx.agent.get(`/api/tasks?status_id=${s.id}`).expect(200)).body as { id: number }[];
+    for (const t of tasks) await ctx.agent.patch(`/api/tasks/${t.id}/status`).send({ status_id: statuses.find((x) => x.is_default)!.id }).expect(200);
+    for (const o of ((await ctx.agent.get('/api/outcomes').expect(200)).body as { id: number; status_id: number; epic_id: number; name: string }[]).filter((o) => o.status_id === s.id)) {
+      await ctx.agent.patch(`/api/outcomes/${o.id}/position`).send({ status_id: statuses.find((x) => x.is_default)!.id }).expect(200);
+    }
+    for (const x of ((await ctx.agent.get('/api/epics').expect(200)).body as { id: number; status_id: number }[]).filter((x) => x.status_id === s.id && x.id !== e.id)) {
+      await ctx.agent.patch(`/api/epics/${x.id}/position`).send({ status_id: statuses.find((y) => y.is_default)!.id }).expect(200);
+    }
+    const r = await ctx.agent.put(`/api/statuses/${s.id}`).send({ active: false }).expect(400);
+    expect(r.body.error).toContain('épico');
+  });
+});
+
 describe('cor dos outcomes', () => {
   it('recebe a cor menos usada, pode ser trocada e aparece nas tarefas', async () => {
     const e = (await ctx.agent.post('/api/epics').send({ name: 'Épico cores' }).expect(201)).body;

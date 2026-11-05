@@ -48,8 +48,8 @@ Todas as tabelas têm PK `id INTEGER AUTOINCREMENT` e `created_at`/`updated_at` 
 | `sessions` | token (PK), user_id → users, expires_at | Sessão simples por cookie httpOnly. |
 | `sectors` | name (único), active | Lista plana, sem hierarquia. |
 | `statuses` | name, color, position, **is_default**, **is_start_status**, **is_completion_status**, **counts_in_wip**, **is_cancel_status**, active | `position` = ordem das colunas. Só um `is_default`. |
-| `epics` | name, description, okr (texto), owner_id → users, status, start_date, end_date, active | status ∈ planejado, em_andamento, concluido, cancelado. |
-| `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, status, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
+| `epics` | name, description, okr (texto), owner_id → users, **status_id → statuses**, board_position, start_date, end_date, active | Mesmas colunas das tarefas (migration `012`). A coluna antiga `status` (planejado/em andamento/...) não é mais usada. |
+| `outcomes` | **epic_id → epics (obrigatório)**, name, description, owner_id, **status_id → statuses**, board_position, color, start_date, target_date, indicator_name, indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence, ice_ease, ice_score, active | Indicador principal embutido (1:1) — sem tabela extra. |
 | `tasks` | title, description, notes, **sector_id**, **requester_id**, **assignee_id**, epic_id?, outcome_id?, **status_id**, priority, estimated_hours?, planned_start_date?, planned_end_date?, board_position, started_at?, completed_at?, created_by, created_at, deleted_at? | `deleted_at` = exclusão lógica. |
 | `task_status_history` | task_id → tasks, from_status_id? (NULL = criação), to_status_id, changed_by → users, changed_at | Base para análises futuras de gargalo e tempo por etapa. |
 
@@ -111,6 +111,14 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   antes de `before_id` (ou no fim, se vazio), usando o ponto médio entre as vizinhas e renumerando a
   coluna quando não sobra espaço. Mudar de coluna por ali aplica as mesmas regras de status
   (datas reais e histórico). Tarefa nova, ou que muda de status pelo detalhe, entra no fim da coluna.
+- **Quadro de épicos e outcomes:** usam os mesmos status das tarefas e a mesma lógica de posição
+  (`server/src/lib/board.ts`; `PATCH /api/epics/:id/position` e `/api/outcomes/:id/position`), sem
+  histórico de status. Item novo sem status vai para o status padrão. Na migration `012`, os itens
+  existentes foram para a coluna equivalente ao status antigo (concluído → status de conclusão,
+  cancelado → "encerra sem entrega", em andamento → primeiro status de início, planejado → padrão).
+  Um status não pode ser desativado enquanto houver tarefas, outcomes ou épicos ativos nele.
+  No frontend, `components/Board.tsx` (quadro genérico) e `components/DataTable.tsx` (lista) servem
+  aos três níveis.
 - **Lixeira:** excluir uma tarefa a move para a lixeira (`deleted_at`, `deleted_by`); ela some das listas,
   do Kanban e dos indicadores. Somente administradores movem para a lixeira; a equipe pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
   seu histórico são removidos definitivamente — na subida do servidor, a cada 6 horas e ao abrir a
