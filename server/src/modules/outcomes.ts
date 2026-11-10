@@ -94,63 +94,76 @@ export function createOutcome(db: DB, input: unknown) {
   return db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
 
+export function listOutcomes(db: DB, f: { includeInactive?: boolean; epicId?: number } = {}) {
+  const where: string[] = ['o.deleted_at IS NULL'];
+  const params: unknown[] = [];
+  if (!f.includeInactive) where.push('o.active = 1');
+  if (f.epicId) {
+    where.push('o.epic_id = ?');
+    params.push(f.epicId);
+  }
+  return db.prepare(`${OUTCOME_SELECT} WHERE ${where.join(' AND ')} ORDER BY e.name, o.name`).all(...params) as ({
+    id: number;
+  } & Record<string, unknown>)[];
+}
+
+export function getOutcome(db: DB, id: number) {
+  const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id) as
+    | ({ id: number } & Record<string, unknown>)
+    | undefined;
+  if (!outcome) throw notFound('Outcome');
+  return { ...outcome, origin_request: originOf(db, 'outcome', id), flag_events: flagEvents(db, 'outcome', id) };
+}
+
+/** Atualiza um outcome (todos os campos do formulário). Tarefas ligadas acompanham a troca de épico. */
+export function updateOutcome(db: DB, id: number, input: unknown) {
+  const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id) as
+    | { id: number; status_id: number | null; board_position: number | null }
+    | undefined;
+  if (!current) throw notFound('Outcome');
+  const d = schema.parse(input);
+  assertEpic(db, d.epic_id);
+  const p = placement(db, 'outcomes', d.status_id, current);
+  db.transaction(() => {
+    db.prepare(
+      `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status_id = ?, board_position = ?,
+                           start_date = ?, target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
+                           target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
+                           active = ?, color = COALESCE(?, color), updated_at = ?
+        WHERE id = ?`,
+    ).run(
+      d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
+      d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
+      d.ice_confidence, d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
+    );
+    // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
+    db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);
+  })();
+  return db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id) as { id: number } & Record<string, unknown>;
+}
+
 export function outcomesRouter(db: DB) {
   const r = Router();
 
   r.get('/', (req, res) => {
-    const where: string[] = ['o.deleted_at IS NULL'];
-    const params: unknown[] = [];
-    if (req.query.include_inactive !== 'true') where.push('o.active = 1');
-    if (req.query.epic_id) {
-      where.push('o.epic_id = ?');
-      params.push(Number(req.query.epic_id));
-    }
     res.json(
-      db
-        .prepare(`${OUTCOME_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY e.name, o.name`)
-        .all(...params),
+      listOutcomes(db, {
+        includeInactive: req.query.include_inactive === 'true',
+        epicId: req.query.epic_id ? Number(req.query.epic_id) : undefined,
+      }),
     );
   });
 
   r.get('/:id', (req, res) => {
-    const id = idParam(req);
-    const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id);
-    if (!outcome) throw notFound('Outcome');
-    res.json({ ...outcome, origin_request: originOf(db, 'outcome', id), flag_events: flagEvents(db, 'outcome', id) });
+    res.json(getOutcome(db, idParam(req)));
   });
-
-  const ensureEpic = (id: number) => assertEpic(db, id);
 
   r.post('/', (req, res) => {
     res.status(201).json(createOutcome(db, req.body));
   });
 
   r.put('/:id', (req, res) => {
-    const id = idParam(req);
-    const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id) as
-      | { id: number; status_id: number | null; board_position: number | null }
-      | undefined;
-    if (!current) throw notFound('Outcome');
-    const d = schema.parse(req.body);
-    ensureEpic(d.epic_id);
-    const p = placement(db, 'outcomes', d.status_id, current);
-    db.transaction(() => {
-      db.prepare(
-        `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status_id = ?, board_position = ?,
-                             start_date = ?,
-                             target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
-                             target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
-                             active = ?, color = COALESCE(?, color), updated_at = ?
-          WHERE id = ?`,
-      ).run(
-        d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
-        d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
-        d.ice_confidence, d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
-      );
-      // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
-      db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);
-    })();
-    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id));
+    res.json(updateOutcome(db, idParam(req), req.body));
   });
 
   r.patch('/:id/position', (req, res) => {

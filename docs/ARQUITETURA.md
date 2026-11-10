@@ -128,6 +128,12 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   restaurar o épico os traz de volta; um outcome cujo épico está na lixeira só volta com o épico. As
   tarefas nunca vão junto: enquanto o épico/outcome está na lixeira, elas só deixam de mostrá-lo; na
   exclusão definitiva o vínculo (`epic_id`/`outcome_id`) é removido.
+- **Conector MCP** (`server/src/modules/mcp.ts`, `POST /mcp`, Streamable HTTP sem sessão, SDK
+  `@modelcontextprotocol/sdk`): autenticado por `Authorization: Bearer <token>`; os tokens
+  (`api_tokens`, migration `014`, só o hash SHA-256 é guardado) são criados e revogados por
+  administradores em `/api/integrations/tokens` e agem em nome de um usuário da equipe. As
+  ferramentas chamam os mesmos serviços da API (validações, histórico, quadro); as de escrita têm
+  `readOnlyHint: false` para o cliente pedir aprovação; não há ferramenta de exclusão.
 - **Flag (bloqueio):** `flagged_at`, `flag_reason`, `flagged_by` em `tasks` e `outcomes`; cada colocar/
   retirar grava `flag_events` (entity_type, entity_id, action add/remove, note, user, data), que
   aparece no histórico. `PUT /api/tasks/:id/flag` e `/api/outcomes/:id/flag` com `{flagged, note}`.

@@ -17,6 +17,8 @@ import { sectorsRouter } from './modules/sectors.js';
 import { statusesRouter } from './modules/statuses.js';
 import { tasksRouter } from './modules/tasks/router.js';
 import { trashRouter } from './modules/trash.js';
+import { integrationsRouter } from './modules/integrations.js';
+import { mcpHandler, mcpMethodNotAllowed } from './modules/mcp.js';
 import { usersRouter } from './modules/users.js';
 
 export function createApp(db: DB) {
@@ -44,8 +46,13 @@ export function createApp(db: DB) {
   api.use('/tasks', requireTeam, tasksRouter(db));
   api.use('/trash', requireTeam, trashRouter(db));
   api.use('/dashboard', requireTeam, dashboardRouter(db));
+  api.use('/integrations', requireTeam, integrationsRouter(db)); // tokens: só administradores
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada.')));
   app.use('/api', api);
+
+  // Conector MCP (Claude): autenticado por token de integração, não por cookie.
+  app.post('/mcp', mcpHandler(db));
+  app.all('/mcp', mcpMethodNotAllowed);
 
   // Em produção o próprio servidor entrega o frontend compilado (um único processo para deploy).
   if (fs.existsSync(config.clientDist)) {

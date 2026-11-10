@@ -350,4 +350,21 @@ CREATE TABLE flag_events (
 CREATE INDEX idx_flag_events_entity ON flag_events(entity_type, entity_id, created_at);
 `,
   },
+  {
+    // Tokens de integração (conector MCP do Claude). Guarda só o hash SHA-256 do token.
+    id: '014_api_tokens',
+    sql: `
+CREATE TABLE api_tokens (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT    NOT NULL,
+  token_hash   TEXT    NOT NULL UNIQUE,
+  token_hint   TEXT    NOT NULL,            -- últimos caracteres, para reconhecer o token na lista
+  user_id      INTEGER NOT NULL REFERENCES users(id), -- as ações feitas com o token ficam em nome deste usuário
+  created_by   INTEGER REFERENCES users(id),
+  created_at   TEXT    NOT NULL,
+  last_used_at TEXT,
+  revoked_at   TEXT
+);
+`,
+  },
 ];

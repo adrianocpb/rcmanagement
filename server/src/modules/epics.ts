@@ -53,21 +53,44 @@ export function createEpic(db: DB, input: unknown) {
   return db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
 
+export function listEpics(db: DB, includeInactive = false) {
+  return db
+    .prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL${includeInactive ? '' : ' AND e.active = 1'} ORDER BY e.active DESC, e.name`)
+    .all() as ({ id: number } & Record<string, unknown>)[];
+}
+
+export function getEpic(db: DB, id: number) {
+  const epic = db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(id) as
+    | ({ id: number } & Record<string, unknown>)
+    | undefined;
+  if (!epic) throw notFound('Épico');
+  return { ...epic, origin_request: originOf(db, 'epic', id) };
+}
+
+/** Atualiza um épico (todos os campos do formulário). */
+export function updateEpic(db: DB, id: number, input: unknown) {
+  const current = db.prepare('SELECT id, status_id, board_position FROM epics WHERE id = ? AND deleted_at IS NULL').get(id) as
+    | { id: number; status_id: number | null; board_position: number | null }
+    | undefined;
+  if (!current) throw notFound('Épico');
+  const d = schema.parse(input);
+  const p = placement(db, 'epics', d.status_id, current);
+  db.prepare(
+    `UPDATE epics SET name = ?, description = ?, okr = ?, owner_id = ?, status_id = ?, board_position = ?, start_date = ?,
+                      end_date = ?, active = ?, updated_at = ? WHERE id = ?`,
+  ).run(d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active, nowIso(), id);
+  return db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(id) as { id: number } & Record<string, unknown>;
+}
+
 export function epicsRouter(db: DB) {
   const r = Router();
 
   r.get('/', (req, res) => {
-    const includeInactive = req.query.include_inactive === 'true';
-    res.json(
-      db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL${includeInactive ? '' : ' AND e.active = 1'} ORDER BY e.active DESC, e.name`).all(),
-    );
+    res.json(listEpics(db, req.query.include_inactive === 'true'));
   });
 
   r.get('/:id', (req, res) => {
-    const id = idParam(req);
-    const epic = db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(id);
-    if (!epic) throw notFound('Épico');
-    res.json({ ...epic, origin_request: originOf(db, 'epic', id) });
+    res.json(getEpic(db, idParam(req)));
   });
 
   r.post('/', (req, res) => {
@@ -75,18 +98,7 @@ export function epicsRouter(db: DB) {
   });
 
   r.put('/:id', (req, res) => {
-    const id = idParam(req);
-    const current = db.prepare('SELECT id, status_id, board_position FROM epics WHERE id = ? AND deleted_at IS NULL').get(id) as
-      | { id: number; status_id: number | null; board_position: number | null }
-      | undefined;
-    if (!current) throw notFound('Épico');
-    const d = schema.parse(req.body);
-    const p = placement(db, 'epics', d.status_id, current);
-    db.prepare(
-      `UPDATE epics SET name = ?, description = ?, okr = ?, owner_id = ?, status_id = ?, board_position = ?, start_date = ?,
-                        end_date = ?, active = ?, updated_at = ? WHERE id = ?`,
-    ).run(d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active, nowIso(), id);
-    res.json(db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(id));
+    res.json(updateEpic(db, idParam(req), req.body));
   });
 
   r.patch('/:id/position', (req, res) => {

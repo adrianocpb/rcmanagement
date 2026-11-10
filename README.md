@@ -36,6 +36,9 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   liberar um acesso ou enviar um documento), com motivo. Colocar e retirar ficam no histórico; o
   quadro e a lista mostram o selo, a lista de tarefas filtra "Somente com flag" e o dashboard mostra o
   **tempo médio com flag**.
+- **Conector do Claude (MCP)** em `/mcp`: o Claude lê, busca (evita duplicados), cria e edita épicos,
+  outcomes e tarefas, pedindo aprovação antes de gravar. Tokens em Administração → Integrações.
+  Passo a passo: [docs/CONECTOR-CLAUDE.md](docs/CONECTOR-CLAUDE.md).
 - **Lixeira**: tarefas, outcomes e épicos excluídos ficam 30 dias e podem ser restauradas por qualquer usuário da equipe;
   depois são removidas automaticamente. Mover para a lixeira, esvaziar e excluir definitivamente:
   somente administradores.
