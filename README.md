@@ -32,7 +32,11 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   pede mais informação (volta para o solicitante complementar), recusa com motivo ou aprova
   convertendo em **Tarefa, Outcome ou Épico** com o formulário já preenchido. O item gerado mostra a
   solicitação de origem e os anexos; o solicitante acompanha o andamento em "Minhas solicitações".
-- **Lixeira**: tarefas excluídas ficam 30 dias e podem ser restauradas por qualquer usuário da equipe;
+- **Flag (bloqueio)** em tarefas e outcomes: marca que o item depende de algo externo (ex.: o negócio
+  liberar um acesso ou enviar um documento), com motivo. Colocar e retirar ficam no histórico; o
+  quadro e a lista mostram o selo, a lista de tarefas filtra "Somente com flag" e o dashboard mostra o
+  **tempo médio com flag**.
+- **Lixeira**: tarefas, outcomes e épicos excluídos ficam 30 dias e podem ser restauradas por qualquer usuário da equipe;
   depois são removidas automaticamente. Mover para a lixeira, esvaziar e excluir definitivamente:
   somente administradores.
 - **Perfis**:
@@ -40,7 +44,7 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   | Perfil | Pode |
   |---|---|
   | Administrador | Tudo: aprovações, lixeira, usuários, setores e status |
-  | Usuário (equipe) | Criar/editar tarefas, outcomes e épicos (sem precisar de solicitação), enviar solicitações, restaurar da lixeira. Não exclui tarefas |
+  | Usuário (equipe) | Criar/editar tarefas, outcomes e épicos (sem precisar de solicitação), colocar/retirar flags, enviar solicitações, restaurar da lixeira. Não exclui itens |
   | Solicitante | Apenas enviar e acompanhar as próprias solicitações |
 
 Visual: segue o design system **RC+ apps** (monocromático: preto RC+ como cor de ação sobre o papel RC+,
@@ -113,7 +117,7 @@ Variáveis de ambiente (todas opcionais):
 | `UPLOADS_DIR` | `data/uploads` | Anexos das solicitações (inclua no backup junto com o banco; em servidor, use disco persistente) |
 | `APP_TIMEZONE` | `America/Sao_Paulo` | Fuso de negócio para datas, atrasos e períodos |
 | `SESSION_DAYS` | `7` | Validade da sessão |
-| `TRASH_DAYS` | `30` | Dias que uma tarefa excluída fica na lixeira antes da remoção definitiva |
+| `TRASH_DAYS` | `30` | Dias que um item excluído (tarefa, outcome, épico) fica na lixeira antes da remoção definitiva |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | Administrador inicial em banco vazio |
 | `COOKIE_SECURE` | `false` | Use `true` ao servir via HTTPS |
 | `TRUST_PROXY` | `false` | Use `true` atrás de um proxy (Fly.io, Railway, Nginx) |

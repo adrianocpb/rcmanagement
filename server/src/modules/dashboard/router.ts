@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
 import { badRequest } from '../../lib/http.js';
-import { addDays, isValidDate, todayLocal } from '../../lib/time.js';
+import { addDays, isValidDate, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
 import { buildTaskWhere } from '../tasks/service.js';
 import {
+  computeFlagTime,
   computeMetrics,
   computeTimeInStatus,
+  type FlagEvent,
   type HistoryEvent,
   type MetricTask,
   type StatusInfo,
@@ -74,7 +76,19 @@ export function dashboardRouter(db: DB) {
       'is_completion_status' | 'is_cancel_status'
     > & { is_completion_status: number; is_cancel_status: number; counts_in_wip: number; active: number })[];
 
+    // Flags (bloqueios) das mesmas tarefas filtradas.
+    const flagEvents = db
+      .prepare(
+        `SELECT f.entity_id AS task_id, f.action, f.created_at
+           FROM flag_events f
+           JOIN tasks t ON t.id = f.entity_id
+           JOIN statuses s ON s.id = t.status_id
+          WHERE f.entity_type = 'task' AND ${sql}`,
+      )
+      .all(...params) as unknown as FlagEvent[];
+
     res.json({
+      flag_time: computeFlagTime(flagEvents, startOfLocalDayUtc(from), startOfLocalDayUtc(addDays(to, 1)), new Date()),
       ...computeMetrics({ tasks, from, to, today, now: new Date() }),
       time_in_status: computeTimeInStatus(
         events,

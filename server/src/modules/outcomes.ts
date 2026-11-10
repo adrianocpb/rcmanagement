@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
+import { requireAdmin } from '../lib/auth.js';
 import { moveItem, placement } from '../lib/board.js';
+import { flagEvents, setFlag } from '../lib/flags.js';
+import { trashOutcome } from './trash.js';
 import { badRequest, idParam, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
 import {
@@ -22,7 +25,7 @@ export const OUTCOME_COLORS = ['azul', 'verde', 'roxo', 'rosa', 'laranja', 'turq
 /** Cor menos usada entre os outcomes ativos (empate: ordem da paleta), para novos outcomes se distinguirem. */
 function nextColor(db: DB) {
   const used = new Map(
-    (db.prepare('SELECT color, COUNT(*) AS n FROM outcomes WHERE active = 1 AND color IS NOT NULL GROUP BY color').all() as {
+    (db.prepare('SELECT color, COUNT(*) AS n FROM outcomes WHERE active = 1 AND deleted_at IS NULL AND color IS NOT NULL GROUP BY color').all() as {
       color: string;
       n: number;
     }[]).map((r) => [r.color, r.n]),
@@ -55,6 +58,7 @@ const OUTCOME_SELECT = `
   SELECT o.*, e.name AS epic_name, u.name AS owner_name,
          st.name AS status_name, st.color AS status_color,
          st.is_completion_status AS is_completed, st.is_cancel_status AS is_canceled,
+         fu.name AS flagged_by_name,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
            WHERE t.outcome_id = o.id AND t.deleted_at IS NULL AND s.is_cancel_status = 0) AS tasks_count,
          (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
@@ -62,10 +66,11 @@ const OUTCOME_SELECT = `
     FROM outcomes o
     JOIN epics e ON e.id = o.epic_id
     LEFT JOIN users u ON u.id = o.owner_id
-    LEFT JOIN statuses st ON st.id = o.status_id`;
+    LEFT JOIN statuses st ON st.id = o.status_id
+    LEFT JOIN users fu ON fu.id = o.flagged_by`;
 
 function assertEpic(db: DB, id: number) {
-  if (!db.prepare('SELECT id FROM epics WHERE id = ?').get(id)) throw badRequest('Épico inválido.');
+  if (!db.prepare('SELECT id FROM epics WHERE id = ? AND deleted_at IS NULL').get(id)) throw badRequest('Épico inválido.');
 }
 
 /** Cria um outcome (usado pelo cadastro e pela aprovação de solicitações). */
@@ -86,14 +91,14 @@ export function createOutcome(db: DB, input: unknown) {
       d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
       d.ice_confidence, d.ice_ease, +d.active, d.color ?? nextColor(db), now, now,
     );
-  return db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
+  return db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
 
 export function outcomesRouter(db: DB) {
   const r = Router();
 
   r.get('/', (req, res) => {
-    const where: string[] = [];
+    const where: string[] = ['o.deleted_at IS NULL'];
     const params: unknown[] = [];
     if (req.query.include_inactive !== 'true') where.push('o.active = 1');
     if (req.query.epic_id) {
@@ -109,9 +114,9 @@ export function outcomesRouter(db: DB) {
 
   r.get('/:id', (req, res) => {
     const id = idParam(req);
-    const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id);
+    const outcome = db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id);
     if (!outcome) throw notFound('Outcome');
-    res.json({ ...outcome, origin_request: originOf(db, 'outcome', id) });
+    res.json({ ...outcome, origin_request: originOf(db, 'outcome', id), flag_events: flagEvents(db, 'outcome', id) });
   });
 
   const ensureEpic = (id: number) => assertEpic(db, id);
@@ -122,7 +127,7 @@ export function outcomesRouter(db: DB) {
 
   r.put('/:id', (req, res) => {
     const id = idParam(req);
-    const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ?').get(id) as
+    const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id) as
       | { id: number; status_id: number | null; board_position: number | null }
       | undefined;
     if (!current) throw notFound('Outcome');
@@ -145,14 +150,27 @@ export function outcomesRouter(db: DB) {
       // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
       db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);
     })();
-    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id));
+    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id));
   });
 
   r.patch('/:id/position', (req, res) => {
     const id = idParam(req);
-    if (!db.prepare('SELECT id FROM outcomes WHERE id = ?').get(id)) throw notFound('Outcome');
+    if (!db.prepare('SELECT id FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id)) throw notFound('Outcome');
     moveItem(db, 'outcomes', id, req.body, nowIso());
-    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.id = ?`).get(id));
+    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id));
+  });
+
+  // Flag (marcador de bloqueio): colocar ou retirar. Fica no histórico.
+  r.put('/:id/flag', (req, res) => {
+    const id = idParam(req);
+    setFlag(db, 'outcome', id, req.body, req.user!.id, nowIso());
+    res.json(db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(id));
+  });
+
+  // Mover para a lixeira: somente administradores.
+  r.delete('/:id', requireAdmin, (req, res) => {
+    trashOutcome(db, idParam(req), req.user!.id);
+    res.status(204).end();
   });
 
   return r;

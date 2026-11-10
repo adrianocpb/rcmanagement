@@ -240,3 +240,43 @@ export function computeTimeInStatus(
       return { status_id: s.id, name: s.name, color: s.color, tasks: st.count, avg_days: st.avg, median_days: st.median };
     });
 }
+
+export interface FlagEvent {
+  task_id: number;
+  action: 'add' | 'remove';
+  created_at: string;
+}
+
+/**
+ * Tempo com flag (bloqueio): cada "colocar → retirar" é um período; uma flag ainda ativa conta até
+ * agora. Entram os períodos que tocam o intervalo [from, to] (datas locais). Durações em horas.
+ */
+export function computeFlagTime(events: FlagEvent[], fromUtc: string, toUtcExclusive: string, now: Date) {
+  const byTask = new Map<number, FlagEvent[]>();
+  for (const e of events) byTask.set(e.task_id, [...(byTask.get(e.task_id) ?? []), e]);
+  const durations: number[] = [];
+  const tasks = new Set<number>();
+  let active = 0;
+  const nowIso = now.toISOString();
+  for (const [taskId, list] of byTask) {
+    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    let start: string | null = null;
+    const close = (end: string | null) => {
+      if (!start) return;
+      const endAt = end ?? nowIso;
+      if (start < toUtcExclusive && endAt >= fromUtc) {
+        durations.push((new Date(endAt).getTime() - new Date(start).getTime()) / 3_600_000);
+        tasks.add(taskId);
+        if (!end) active++;
+      }
+      start = null;
+    };
+    for (const e of list) {
+      if (e.action === 'add') start ??= e.created_at;
+      else close(e.created_at);
+    }
+    close(null); // flag ainda ativa
+  }
+  const st = stats(durations);
+  return { periods: st.count, tasks: tasks.size, avg_hours: st.avg, median_hours: st.median, active };
+}

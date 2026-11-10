@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
+import { deleteFlagEvents, flagEvents } from '../../lib/flags.js';
 import { endOfColumn, fillMissingPositions, moveSchema, positionBefore } from '../../lib/board.js';
 import { badRequest, notFound } from '../../lib/http.js';
 import { addDays, nowIso, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
@@ -56,6 +57,8 @@ export type TaskFilters = {
   to?: string;
   period_field?: 'planned_end' | 'created' | 'completed';
   overdue?: boolean;
+  /** Somente tarefas com flag. */
+  flagged?: boolean;
   q?: string;
 };
 
@@ -69,14 +72,16 @@ const BASE_SELECT = `
          e.name  AS epic_name,
          o.name  AS outcome_name,
          o.color AS outcome_color,
+         fu.name AS flagged_by_name,
          (SELECT COUNT(*) FROM task_comments c WHERE c.task_id = t.id) AS comments_count
     FROM tasks t
     JOIN statuses s   ON s.id = t.status_id
     JOIN sectors sec  ON sec.id = t.sector_id
     JOIN users req    ON req.id = t.requester_id
     JOIN users asg    ON asg.id = t.assignee_id
-    LEFT JOIN epics e    ON e.id = t.epic_id
-    LEFT JOIN outcomes o ON o.id = t.outcome_id`;
+    LEFT JOIN epics e    ON e.id = t.epic_id AND e.deleted_at IS NULL     -- épico/outcome na lixeira: some da tarefa
+    LEFT JOIN outcomes o ON o.id = t.outcome_id AND o.deleted_at IS NULL
+    LEFT JOIN users fu   ON fu.id = t.flagged_by`;
 
 export type TaskRow = Record<string, unknown> & {
   id: number;
@@ -137,6 +142,7 @@ export function buildTaskWhere(f: TaskFilters, today = todayLocal()) {
     );
     params.push(today);
   }
+  if (f.flagged) where.push('t.flagged_at IS NOT NULL');
   return { sql: where.join(' AND '), params };
 }
 
@@ -170,7 +176,7 @@ export function getTask(db: DB, id: number) {
         ORDER BY h.changed_at, h.id`,
     )
     .all(id);
-  return { ...decorate(row, todayLocal()), history };
+  return { ...decorate(row, todayLocal()), history, flag_events: flagEvents(db, 'task', id) };
 }
 
 function requireRow(db: DB, table: string, id: number | null | undefined, label: string) {
@@ -429,6 +435,7 @@ export function restoreTask(db: DB, id: number) {
 export function purgeTask(db: DB, id: number) {
   const info = db.prepare('DELETE FROM tasks WHERE id = ? AND deleted_at IS NOT NULL').run(id);
   if (info.changes === 0) throw notFound('Tarefa na lixeira');
+  deleteFlagEvents(db, 'task', [id]);
   removeTaskUploads([id]);
 }
 
@@ -440,6 +447,7 @@ export function purgeTrash(db: DB, olderThanDays?: number, now = new Date()): nu
   const ids = (db.prepare(`SELECT id FROM tasks WHERE ${where}`).all(...params) as { id: number }[]).map((r) => r.id);
   if (!ids.length) return 0;
   const info = db.prepare(`DELETE FROM tasks WHERE ${where}`).run(...params);
+  deleteFlagEvents(db, 'task', ids);
   removeTaskUploads(ids); // imagens dos comentários
   return info.changes;
 }

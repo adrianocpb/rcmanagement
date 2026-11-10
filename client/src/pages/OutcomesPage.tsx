@@ -6,12 +6,14 @@ import { Board, BoardCard, byBoardPosition } from '../components/Board';
 import { DataTable, type Column } from '../components/DataTable';
 import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
 import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSortKey } from '../components/Ice';
+import { FlagBadge, FlagControl, FlagEventText } from '../components/Flag';
 import { OriginRequestCard } from '../components/Requests';
+import { TrashButton } from '../components/TrashButton';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
 import { Avatar, ErrorText, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
 import { api, type Outcome, type Task } from '../lib/api';
-import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, fmtDate, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
+import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, fmtDate, fmtDateTime, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
 import { usePersistentState } from '../lib/prefs';
 import { useEpics, useOutcomes, useStatuses, useUserOptions } from '../lib/queries';
 import { Info, pct, sortByCreatedDesc } from './EpicsPage';
@@ -127,6 +129,7 @@ function OutcomeBoardCard({ outcome: o, overlay }: { outcome: Outcome; overlay?:
           {o.tasks_done}/{o.tasks_count} tarefas
         </span>
         <IceBadge score={o.ice_score} compact />
+        <FlagBadge item={o} />
         {!o.active && <span className="ml-auto">Inativo</span>}
       </div>
     </BoardCard>
@@ -193,6 +196,7 @@ export function OutcomesPage() {
         </div>
       ),
     },
+    { key: 'flag', label: 'Flag', sort: (o) => (o.flagged_at ? 0 : 1), render: (o) => <FlagBadge item={o} /> },
     { key: 'ice', label: 'ICE', sort: (o) => o.ice_score, render: (o) => <IceBadge score={o.ice_score} compact />, defaultDir: -1 },
     { key: 'target', label: 'Data alvo', sort: (o) => o.target_date, render: (o) => fmtDate(o.target_date) },
     { key: 'created', label: 'Criado em', sort: (o) => o.created_at, render: (o) => fmtDateOfInstant(o.created_at), defaultDir: -1 },
@@ -290,6 +294,7 @@ export function OutcomesPage() {
 export function OutcomeDetailPage() {
   const id = Number(useParams().id);
   const { open } = useTaskModal();
+  const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const { data: o, isLoading, error } = useQuery({ queryKey: ['outcome', id], queryFn: () => api.get<Outcome>(`/outcomes/${id}`) });
   const { data: tasks } = useQuery({ queryKey: ['tasks', { outcome_id: id }], queryFn: () => api.get<Task[]>(`/tasks?outcome_id=${id}`) });
@@ -325,9 +330,19 @@ export function OutcomeDetailPage() {
                 </div>
               )}
             </div>
-            <button className="btn-secondary" onClick={() => setEditing(true)}>
-              <Pencil size={14} /> Editar
-            </button>
+            <div className="flex gap-1">
+              <button className="btn-secondary" onClick={() => setEditing(true)}>
+                <Pencil size={14} /> Editar
+              </button>
+              <TrashButton
+                url={`/outcomes/${o.id}`}
+                backTo="/outcomes"
+                confirmText="Mover este outcome para a lixeira? As tarefas continuam existindo, só deixam de mostrá-lo. Ele poderá ser restaurado por 30 dias."
+              />
+            </div>
+          </div>
+          <div className="mt-3">
+            <FlagControl item={o} url={`/outcomes/${o.id}/flag`} onChanged={() => Promise.all(['outcome', 'outcomes'].map((k) => qc.invalidateQueries({ queryKey: [k] })))} />
           </div>
           <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
             <Info label="Responsável" value={o.owner_name ?? '—'} />
@@ -349,6 +364,21 @@ export function OutcomeDetailPage() {
           <IndicatorStrip outcome={o} large />
           <h2 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">Priorização (ICE)</h2>
           <IceStrip item={o} />
+          {!!o.flag_events?.length && (
+            <>
+              <h2 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">Histórico de flags</h2>
+              <ol className="space-y-2">
+                {o.flag_events.map((e) => (
+                  <li key={e.id} className="text-sm text-slate-800">
+                    <FlagEventText e={e} />
+                    <div className="text-xs text-slate-500">
+                      {fmtDateTime(e.created_at)} · {e.user_name ?? '—'}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
         </div>
       </div>
 

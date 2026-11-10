@@ -15,6 +15,7 @@ export interface TaskFilterValues {
   from: string;
   to: string;
   overdue: boolean;
+  flagged: boolean;
 }
 
 export const EMPTY_FILTERS: TaskFilterValues = {
@@ -30,6 +31,7 @@ export const EMPTY_FILTERS: TaskFilterValues = {
   from: '',
   to: '',
   overdue: false,
+  flagged: false,
 };
 
 export function activeFilterCount(f: TaskFilterValues) {
@@ -152,6 +154,17 @@ export function TaskFilters({
           onChange={(e) => onChange({ ...value, overdue: e.target.checked })}
         />
         Somente atrasadas
+      </label>
+      <label
+        className={`flex cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-[13px] text-slate-700 select-none hover:bg-slate-50${on(value.flagged)}`}
+      >
+        <input
+          type="checkbox"
+          className="accent-amber-600"
+          checked={value.flagged}
+          onChange={(e) => onChange({ ...value, flagged: e.target.checked })}
+        />
+        Somente com flag
       </label>
       {count > 0 && (
         <button className="btn-ghost ml-auto py-1 text-[13px]" onClick={() => onChange(EMPTY_FILTERS)}>

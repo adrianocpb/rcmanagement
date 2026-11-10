@@ -321,4 +321,33 @@ CREATE INDEX idx_epics_board ON epics(status_id, board_position);
 CREATE INDEX idx_outcomes_board ON outcomes(status_id, board_position);
 `,
   },
+  {
+    // Lixeira para épicos e outcomes; flag (marcador de bloqueio) em tarefas e outcomes.
+    id: '013_trash_epics_outcomes_and_flags',
+    sql: `
+ALTER TABLE epics ADD COLUMN deleted_at TEXT;
+ALTER TABLE epics ADD COLUMN deleted_by INTEGER REFERENCES users(id);
+ALTER TABLE outcomes ADD COLUMN deleted_at TEXT;
+ALTER TABLE outcomes ADD COLUMN deleted_by INTEGER REFERENCES users(id);
+
+ALTER TABLE tasks ADD COLUMN flagged_at TEXT;
+ALTER TABLE tasks ADD COLUMN flag_reason TEXT;
+ALTER TABLE tasks ADD COLUMN flagged_by INTEGER REFERENCES users(id);
+ALTER TABLE outcomes ADD COLUMN flagged_at TEXT;
+ALTER TABLE outcomes ADD COLUMN flag_reason TEXT;
+ALTER TABLE outcomes ADD COLUMN flagged_by INTEGER REFERENCES users(id);
+
+-- Histórico de flags (colocar/retirar). entity_type: 'task' ou 'outcome'.
+CREATE TABLE flag_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT    NOT NULL CHECK (entity_type IN ('task', 'outcome')),
+  entity_id   INTEGER NOT NULL,
+  action      TEXT    NOT NULL CHECK (action IN ('add', 'remove')),
+  note        TEXT,
+  user_id     INTEGER REFERENCES users(id),
+  created_at  TEXT    NOT NULL
+);
+CREATE INDEX idx_flag_events_entity ON flag_events(entity_type, entity_id, created_at);
+`,
+  },
 ];

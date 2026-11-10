@@ -123,6 +123,16 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   do Kanban e dos indicadores. Somente administradores movem para a lixeira; a equipe pode restaurar. Após `TRASH_DAYS` (30) dias a tarefa e
   seu histórico são removidos definitivamente — na subida do servidor, a cada 6 horas e ao abrir a
   lixeira. Esvaziar a lixeira ou excluir um item definitivamente: somente administradores.
+- **Lixeira de outcomes e épicos** (migration `013`, `server/src/modules/trash.ts`, rotas `/api/trash`):
+  mesma regra das tarefas. Excluir um épico leva junto os outcomes dele (mesmo `deleted_at`), e
+  restaurar o épico os traz de volta; um outcome cujo épico está na lixeira só volta com o épico. As
+  tarefas nunca vão junto: enquanto o épico/outcome está na lixeira, elas só deixam de mostrá-lo; na
+  exclusão definitiva o vínculo (`epic_id`/`outcome_id`) é removido.
+- **Flag (bloqueio):** `flagged_at`, `flag_reason`, `flagged_by` em `tasks` e `outcomes`; cada colocar/
+  retirar grava `flag_events` (entity_type, entity_id, action add/remove, note, user, data), que
+  aparece no histórico. `PUT /api/tasks/:id/flag` e `/api/outcomes/:id/flag` com `{flagged, note}`.
+  Indicador **Tempo médio com flag** (dashboard): cada colocar → retirar é um período; flag ativa
+  conta até agora; entram os períodos que tocam o intervalo filtrado (`computeFlagTime`).
 - **Permissões (perfis):** `admin` — tudo, inclusive aprovações, lixeira e administração; `user`
   (equipe) — cria e edita tarefas, épicos e outcomes e envia solicitações, sem excluir;
   `requester` (Solicitante) — somente `/api/requests` (as próprias) e `/api/sectors`. As rotas da

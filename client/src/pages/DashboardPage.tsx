@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Clock, Hourglass, Inbox, Layers } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Flag, Hourglass, Inbox, Layers } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Bar,
@@ -17,7 +17,7 @@ import {
 } from 'recharts';
 import { ErrorText, PageHeader, Spinner } from '../components/ui';
 import { api, qs, type DashboardData } from '../lib/api';
-import { addDays, fmtDate, fmtDays, fmtShortDate, todayLocal } from '../lib/format';
+import { addDays, fmtDate, fmtDays, fmtHours, fmtShortDate, todayLocal } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useUserOptions } from '../lib/queries';
 
 // Cores do design system RC+ apps (monocromático): série principal em preto, contexto em cinza, grade em border.
@@ -159,7 +159,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:grid-cols-7">
         <Kpi icon={<Clock size={16} />} label="Cycle Time médio" value={fmtDays(data.cycle_time.avg)} hint={`Mediana ${fmtDays(data.cycle_time.median)} · ${data.cycle_time.count} tarefas`} />
         <Kpi icon={<Hourglass size={16} />} label="Lead Time médio" value={fmtDays(data.lead_time.avg)} hint={`Mediana ${fmtDays(data.lead_time.median)} · ${data.lead_time.count} tarefas`} />
         <Kpi icon={<CheckCircle2 size={16} />} label="Throughput" value={String(data.throughput.count)} hint={`concluídas · ${data.throughput.per_week.toLocaleString('pt-BR')}/semana`} />
@@ -177,6 +177,17 @@ function DashboardBody({ data }: { data: DashboardData }) {
           value={String(data.overdue.count)}
           hint="agora, não concluídas"
           tone={data.overdue.count > 0 ? 'critical' : undefined}
+        />
+        <Kpi
+          icon={<Flag size={16} />}
+          label="Tempo médio com flag"
+          value={fmtHours(data.flag_time.avg_hours)}
+          hint={
+            data.flag_time.periods
+              ? `${data.flag_time.periods} bloqueio(s) em ${data.flag_time.tasks} tarefa(s) · ${data.flag_time.active} ativo(s) agora`
+              : 'nenhum bloqueio no período'
+          }
+          title={`Tempo entre colocar e retirar a flag (bloqueio). Flags ainda ativas contam até agora. Mediana: ${fmtHours(data.flag_time.median_hours)}.`}
         />
       </div>
 

@@ -96,6 +96,13 @@ export function fmtDays(n: number | null | undefined): string {
   return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${Math.abs(n) === 1 ? 'dia' : 'dias'}`;
 }
 
+/** Duração em horas: até 24 h mostra horas; acima, dias (1 casa). */
+export function fmtHours(h: number | null | undefined): string {
+  if (h === null || h === undefined) return '—';
+  if (h < 24) return `${h.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
+  return fmtDays(Math.round((h / 24) * 10) / 10);
+}
+
 export function fmtNumber(n: number | null | undefined, digits = 2): string {
   if (n === null || n === undefined) return '—';
   return n.toLocaleString('pt-BR', { maximumFractionDigits: digits });

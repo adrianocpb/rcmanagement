@@ -2,10 +2,12 @@ import type { Task } from '../lib/api';
 import { PRIORITY, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
 import { useTaskModal } from './TaskModal';
 import { DataTable, type Column } from './DataTable';
+import { FlagBadge } from './Flag';
 import { DeadlineBadge, OutcomeTag, PriorityBadge, StatusPill } from './ui';
 
 const COLUMNS: Column<Task>[] = [
   { key: 'title', label: 'Título', sort: (t) => t.title.toLowerCase(), render: (t) => <span className="font-medium text-slate-900">{t.title}</span>, className: 'min-w-56', wrap: true },
+  { key: 'flag', label: 'Flag', sort: (t) => (t.flagged_at ? 0 : 1), render: (t) => <FlagBadge item={t} /> },
   { key: 'status', label: 'Status', sort: (t) => t.status_name, render: (t) => <StatusPill name={t.status_name} color={t.status_color} /> },
   { key: 'priority', label: 'Prioridade', sort: (t) => PRIORITY[t.priority].order, render: (t) => <PriorityBadge priority={t.priority} /> },
   { key: 'sector', label: 'Setor', sort: (t) => t.sector_name, render: (t) => t.sector_name },

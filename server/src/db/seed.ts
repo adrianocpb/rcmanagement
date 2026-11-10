@@ -214,6 +214,24 @@ export function seedDemo(db: DB, now = new Date()) {
     for (const h of hist) insertHistory.run(info.lastInsertRowid, h[0], h[1], h[3], h[2]);
   }
   fillMissingBoardPositions(db);
+
+  // Flags (bloqueios) de demonstração: uma ativa e uma já resolvida.
+  const taskId = (title: string) => (db.prepare('SELECT id FROM tasks WHERE title = ?').get(title) as { id: number } | undefined)?.id;
+  const insertFlag = db.prepare(
+    'INSERT INTO flag_events (entity_type, entity_id, action, note, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  );
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const blocked = taskId('Integração do chat com a base de clientes');
+  if (blocked) {
+    const reason = 'Aguardando a área de negócio liberar acesso à API do CRM';
+    insertFlag.run('task', blocked, 'add', reason, users.Maria, hoursAgo(50));
+    db.prepare('UPDATE tasks SET flagged_at = ?, flag_reason = ?, flagged_by = ? WHERE id = ?').run(hoursAgo(50), reason, users.Maria, blocked);
+  }
+  const resolved = taskId('Regras de conciliação por valor e data');
+  if (resolved) {
+    insertFlag.run('task', resolved, 'add', 'Faltava o layout do extrato do banco', users.Pedro, hoursAgo(24 * 50));
+    insertFlag.run('task', resolved, 'remove', 'Financeiro enviou o layout', users.Pedro, hoursAgo(24 * 48));
+  }
   // Épicos e outcomes do seed usam o status antigo; converte para as colunas do quadro.
   db.exec(legacyStatusToColumnSql('epics') + legacyStatusToColumnSql('outcomes'));
   // Estimativas ICE dos outcomes (impacto, confiança, facilidade) de demonstração.

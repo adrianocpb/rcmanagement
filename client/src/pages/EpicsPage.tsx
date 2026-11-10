@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Board, BoardCard, byBoardPosition } from '../components/Board';
 import { DataTable, type Column } from '../components/DataTable';
 import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
+import { TrashButton } from '../components/TrashButton';
 import { Avatar, EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
 import { api, type Epic } from '../lib/api';
 import { fmtDate, fmtDateOfInstant } from '../lib/format';
@@ -197,9 +198,16 @@ export function EpicDetailPage() {
               </div>
             )}
           </div>
-          <button className="btn-secondary" onClick={() => setEditing(true)}>
-            <Pencil size={14} /> Editar
-          </button>
+          <div className="flex gap-1">
+            <button className="btn-secondary" onClick={() => setEditing(true)}>
+              <Pencil size={14} /> Editar
+            </button>
+            <TrashButton
+              url={`/epics/${epic.id}`}
+              backTo="/epicos"
+              confirmText={`Mover este épico para a lixeira${epic.outcomes_count ? `, junto com ${epic.outcomes_count} outcome(s)` : ''}? As tarefas continuam existindo. Ele poderá ser restaurado por 30 dias.`}
+            />
+          </div>
         </div>
         <div className="mt-4 grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-5">
           <Info label="Responsável" value={epic.owner_name ?? '—'} />

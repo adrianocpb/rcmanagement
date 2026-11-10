@@ -16,6 +16,7 @@ import { requestsRouter } from './modules/requests/router.js';
 import { sectorsRouter } from './modules/sectors.js';
 import { statusesRouter } from './modules/statuses.js';
 import { tasksRouter } from './modules/tasks/router.js';
+import { trashRouter } from './modules/trash.js';
 import { usersRouter } from './modules/users.js';
 
 export function createApp(db: DB) {
@@ -41,6 +42,7 @@ export function createApp(db: DB) {
   api.use('/epics', requireTeam, epicsRouter(db));
   api.use('/outcomes', requireTeam, outcomesRouter(db));
   api.use('/tasks', requireTeam, tasksRouter(db));
+  api.use('/trash', requireTeam, trashRouter(db));
   api.use('/dashboard', requireTeam, dashboardRouter(db));
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada.')));
   app.use('/api', api);

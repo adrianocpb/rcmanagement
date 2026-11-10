@@ -154,6 +154,11 @@ export interface Outcome {
   created_at: string;
   /** Apenas no detalhe (GET /outcomes/:id). */
   origin_request?: OriginRequest | null;
+  flag_events?: FlagEvent[];
+  /** Flag (marcador de bloqueio): preenchido enquanto o item está com flag. */
+  flagged_at: string | null;
+  flag_reason: string | null;
+  flagged_by_name: string | null;
 }
 export interface Task {
   id: number;
@@ -190,6 +195,10 @@ export interface Task {
   is_overdue: boolean;
   is_canceled: boolean;
   deadline_state: DeadlineState;
+  /** Flag (marcador de bloqueio): preenchido enquanto o item está com flag. */
+  flagged_at: string | null;
+  flag_reason: string | null;
+  flagged_by_name: string | null;
 }
 export interface HistoryEntry {
   id: number;
@@ -201,8 +210,16 @@ export interface HistoryEntry {
   to_status_color: string;
   changed_by_name: string | null;
 }
+export interface FlagEvent {
+  id: number;
+  action: 'add' | 'remove';
+  note: string | null;
+  created_at: string;
+  user_name: string | null;
+}
 export interface TaskDetail extends Task {
   history: HistoryEntry[];
+  flag_events: FlagEvent[];
   origin_request?: OriginRequest | null;
 }
 
@@ -226,6 +243,8 @@ export interface DashboardData {
   time_in_status: { status_id: number; name: string; color: string; tasks: number; avg_days: number | null; median_days: number | null }[];
   /** Nomes dos status que contam no WIP. */
   wip_statuses: string[];
+  /** Tempo com flag (bloqueio): períodos que tocam o intervalo; flag ativa conta até agora. */
+  flag_time: { periods: number; tasks: number; avg_hours: number | null; median_hours: number | null; active: number };
 }
 
 // ---------- Solicitações de melhoria ----------

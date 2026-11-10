@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CalendarClock, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Flag, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, type Priority, type TaskDetail } from '../lib/api';
+import { api, type FlagEvent, type HistoryEntry, type Priority, type TaskDetail } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { PRIORITY, PRIORITY_KEYS, fmtDate, fmtDateTime, fmtNumber, isoToLocalInput, localInputToIso } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
+import { FlagControl, FlagEventText } from './Flag';
 import { OriginRequestCard } from './Requests';
 import { TaskComments } from './TaskComments';
 import { Avatar, DeadlineBadge, ErrorText, Field, Modal, OutcomeTag, PriorityBadge, Spinner, StatusPill } from './ui';
@@ -134,6 +135,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
             </div>
           </div>
           <ErrorText error={statusMut.error ?? delMut.error} />
+          <FlagControl item={task} url={`/tasks/${task.id}/flag`} onChanged={invalidate} />
           <OriginRequestCard origin={task.origin_request} />
 
           <Section title="Informações">
@@ -145,7 +147,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
           <div className="grid gap-5 sm:grid-cols-2">
             <Section title="Relacionamentos">
               <Row label="Épico">
-                {task.epic_id ? (
+                {task.epic_id && task.epic_name ? (
                   <Link className="text-slate-900 underline underline-offset-2 hover:text-slate-500" to={`/epicos/${task.epic_id}`}>
                     {task.epic_name}
                   </Link>
@@ -154,7 +156,7 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
                 )}
               </Row>
               <Row label="Outcome">
-                {task.outcome_id ? (
+                {task.outcome_id && task.outcome_name ? (
                   <Link className="hover:opacity-80" to={`/outcomes/${task.outcome_id}`}>
                     <OutcomeTag name={task.outcome_name ?? ''} color={task.outcome_color} className="text-xs" />
                   </Link>
@@ -196,7 +198,20 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
 
           <Section title="Histórico">
             <ol className="relative ml-2 border-l border-slate-200">
-              {task.history.map((h) => (
+              {timeline(task).map((h) =>
+                h.kind === 'flag' ? (
+                  <li key={`f${h.e.id}`} className="mb-3 ml-4 last:mb-0">
+                    <span className="absolute -left-[7px] mt-1 rounded-full bg-white text-amber-600">
+                      <Flag size={13} className={h.e.action === 'add' ? 'fill-current' : ''} />
+                    </span>
+                    <div className="text-sm text-slate-800">
+                      <FlagEventText e={h.e} />
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {fmtDateTime(h.e.created_at)} · {h.e.user_name ?? '—'}
+                    </div>
+                  </li>
+                ) : (
                 <li key={h.id} className="mb-3 ml-4 last:mb-0">
                   <span
                     className="absolute -left-[5px] mt-1.5 size-2.5 rounded-full ring-2 ring-white"
@@ -217,13 +232,24 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
                     {fmtDateTime(h.changed_at)} · {h.changed_by_name ?? '—'}
                   </div>
                 </li>
-              ))}
+                ),
+              )}
             </ol>
           </Section>
         </div>
       )}
     </Modal>
   );
+}
+
+/** Histórico da tarefa: mudanças de status e flags, em ordem cronológica. */
+function timeline(task: TaskDetail) {
+  type Item = (HistoryEntry & { kind: 'status'; at: string }) | { kind: 'flag'; at: string; e: FlagEvent };
+  const items: Item[] = [
+    ...task.history.map((h) => ({ ...h, kind: 'status' as const, at: h.changed_at })),
+    ...(task.flag_events ?? []).map((e) => ({ kind: 'flag' as const, at: e.created_at, e })),
+  ];
+  return items.sort((a, b) => a.at.localeCompare(b.at));
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

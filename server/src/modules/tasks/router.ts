@@ -5,7 +5,8 @@ import { config } from '../../config.js';
 import { requireAdmin } from '../../lib/auth.js';
 import { idParam } from '../../lib/http.js';
 import { commentsRouter } from '../comments.js';
-import { isValidDate } from '../../lib/time.js';
+import { setFlag } from '../../lib/flags.js';
+import { isValidDate, nowIso } from '../../lib/time.js';
 import { PRIORITIES } from '../../lib/validation.js';
 import {
   changeStatus,
@@ -40,6 +41,7 @@ export const taskFiltersSchema = z.object({
     z.enum(['planned_end', 'created', 'completed']).optional(),
   ),
   overdue: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
+  flagged: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
   q: z.string().trim().max(200).optional(),
 });
 
@@ -96,6 +98,13 @@ export function tasksRouter(db: DB) {
   // Ordem manual no quadro: coluna + posição (antes de qual tarefa; vazio = fim da coluna).
   r.patch('/:id/position', (req, res) => {
     res.json(moveTask(db, idParam(req), req.body, req.user!.id));
+  });
+
+  // Flag (marcador de bloqueio): colocar ou retirar. Fica no histórico.
+  r.put('/:id/flag', (req, res) => {
+    const id = idParam(req);
+    setFlag(db, 'task', id, req.body, req.user!.id, nowIso());
+    res.json(getTask(db, id));
   });
 
   // Mover para a lixeira: somente administradores.

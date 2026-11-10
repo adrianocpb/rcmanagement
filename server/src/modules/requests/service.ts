@@ -206,7 +206,7 @@ function convertedProgress(db: DB, type: ConvertType | null, id: number | null) 
                 WHERE t.${key} = x.id AND t.deleted_at IS NULL AND s.is_cancel_status = 0) AS tasks_count,
               (SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id
                 WHERE t.${key} = x.id AND t.deleted_at IS NULL AND s.is_completion_status = 1) AS tasks_done
-         FROM ${table} x LEFT JOIN statuses st ON st.id = x.status_id WHERE x.id = ?`,
+         FROM ${table} x LEFT JOIN statuses st ON st.id = x.status_id WHERE x.id = ? AND x.deleted_at IS NULL`,
     )
     .get(id) as Record<string, unknown> | undefined;
   if (!row) return { type, id, removed: true };

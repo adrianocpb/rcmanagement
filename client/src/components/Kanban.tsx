@@ -2,6 +2,7 @@ import { AlertCircle, CalendarDays, MessageSquare } from 'lucide-react';
 import { api, type Status, type Task } from '../lib/api';
 import { fmtShortDate, PRIORITY } from '../lib/format';
 import { Board, BoardCard, byBoardPosition } from './Board';
+import { FlagBadge } from './Flag';
 import { useInvalidateTasks, useTaskModal } from './TaskModal';
 import { Avatar, DeadlineBadge, OutcomeTag, PriorityBadge } from './ui';
 
@@ -92,6 +93,7 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
+        <FlagBadge item={task} />
         <PriorityBadge priority={task.priority} />
         <span className="rounded bg-[rgba(107,107,102,0.16)] px-1.5 py-0.5 text-xs text-slate-600">{task.sector_name}</span>
         {(task.deadline_state === 'atrasada' ||
