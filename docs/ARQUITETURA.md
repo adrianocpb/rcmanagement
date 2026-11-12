@@ -174,6 +174,22 @@ Gráficos: (1) criadas × concluídas por período — o throughput ao longo do 
 "Concluídas"; (2) Cycle Time médio por período com a mediana do período como referência;
 (3) tempo médio em cada coluna; (4) distribuição atual por status; (5) aging.
 
+### Visão "Outcomes" do dashboard (`server/src/modules/dashboard/outcomes.ts`, `GET /api/dashboard/outcomes`)
+
+O dashboard abre na visão **Tarefas** (indicadores acima) e pode ser trocado para **Outcomes** (a escolha
+fica salva no navegador). Filtros: período, épico e responsável do outcome. Considera outcomes ativos
+fora da lixeira:
+
+| Indicador | Definição |
+|---|---|
+| Outcomes abertos | Não estão em status de conclusão nem "encerra sem entrega" |
+| Concluídos | Em status de conclusão (retrato atual); "criados no período" pela data de criação |
+| Progresso médio do indicador | Média, nos abertos com baseline, atual e meta, de (atual − baseline) / (meta − baseline), limitado a 0–100% |
+| Meta atingida | Outcomes (não cancelados) com progresso de 100% |
+| Atrasados | Abertos com data alvo anterior a hoje |
+| Tempo médio com flag | Mesma regra das tarefas, com as flags dos outcomes |
+| Gráficos | Progresso do indicador por outcome (na cor do outcome), entregas (tarefas concluídas × em aberto) e distribuição por status |
+
 ## 7. Datas e fuso horário
 
 - Configuração única: `APP_TIMEZONE` (padrão `America/Sao_Paulo`) em `server/src/config.ts`.

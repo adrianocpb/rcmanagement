@@ -6,8 +6,9 @@ São Paulo e um disco permanente para o banco, os anexos e os backups.
 Custo estimado para teste: poucos dólares por mês (uma máquina pequena que desliga sozinha quando
 ninguém está usando + 1 GB de disco). Confira os valores atuais em <https://fly.io/docs/about/pricing/>.
 
-> Todos os comandos abaixo são no **Prompt de Comando (cmd)**, dentro da pasta do projeto:
-> `cd C:\Users\user\Documents\Projetos\Rcmanagement\rcmanagement`
+> Todos os comandos abaixo são no **Prompt de Comando (cmd)**, dentro da pasta do projeto (a que tem o
+> arquivo `package.json`). Como o nome tem espaço, use aspas:
+> `cd "C:\Users\user\Documents\Projetos\Rc Inovacao"`
 
 ## 1. Instalar o programa da Fly (uma vez)
 
@@ -85,12 +86,18 @@ usuários e senhas passam a ser os do notebook.
 
 ## Atualizar depois de mudanças
 
-Sempre que houver uma versão nova no GitHub:
+**Automático:** o repositório tem um GitHub Action (`.github/workflows/main.yml`) que publica no Fly.io
+a cada envio (push) para o branch de trabalho. Acompanhe em GitHub → aba **Actions**. Não é preciso
+rodar `fly deploy` no seu computador.
+
+Para manter a cópia do seu computador atualizada (para rodar localmente), dentro da pasta do projeto:
 
 ```
 git pull
-fly deploy
+npm install
 ```
+
+Publicação manual (só se precisar, por exemplo com o Action desligado): `fly deploy`.
 
 O banco e os anexos ficam no disco permanente e não são afetados.
 

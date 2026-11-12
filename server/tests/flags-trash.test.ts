@@ -120,3 +120,26 @@ describe('lixeira de outcomes e épicos', () => {
     expect((await ctx.agent.get('/api/trash').expect(200)).body.items).toHaveLength(0);
   });
 });
+
+describe('dashboard: visão outcomes', () => {
+  it('indicadores dos outcomes com filtro de épico e responsável', async () => {
+    const e = (await ctx.agent.post('/api/epics').send({ name: 'Épico Dash' }).expect(201)).body;
+    const statuses = (await ctx.agent.get('/api/statuses').expect(200)).body as { id: number; is_completion_status: number }[];
+    const done = statuses.find((s) => s.is_completion_status)!;
+    await ctx.agent
+      .post('/api/outcomes')
+      .send({ name: 'A', epic_id: e.id, indicator_name: 'X', baseline_value: 0, target_value: 100, current_value: 40, target_date: '2020-01-01', owner_id: 1 })
+      .expect(201);
+    await ctx.agent.post('/api/outcomes').send({ name: 'B', epic_id: e.id, status_id: done.id, baseline_value: 10, target_value: 0, current_value: 0 }).expect(201);
+    await ctx.agent.post('/api/outcomes').send({ name: 'C', epic_id: e.id }).expect(201);
+
+    const d = (await ctx.agent.get(`/api/dashboard/outcomes?epic_id=${e.id}`).expect(200)).body;
+    expect(d).toMatchObject({ total: 3, open: 2, completed: 1, overdue: 1, created: 3 });
+    expect(d.indicator).toMatchObject({ avg_progress_open: 40, open_measured: 1, open_without_indicator: 1, reached: 1, measured: 2 });
+    expect(d.progress.map((p: { name: string }) => p.name)).toEqual(['A']);
+    expect(d.flag_time.periods).toBe(0);
+
+    const mine = (await ctx.agent.get(`/api/dashboard/outcomes?epic_id=${e.id}&owner_id=1`).expect(200)).body;
+    expect(mine.total).toBe(1);
+  });
+});

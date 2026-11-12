@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Clock, Flag, Hourglass, Inbox, Layers } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Flag, Gauge, Hourglass, Inbox, KanbanSquare, Layers, Target, Trophy } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Bar,
@@ -16,8 +16,9 @@ import {
   YAxis,
 } from 'recharts';
 import { ErrorText, PageHeader, Spinner } from '../components/ui';
-import { api, qs, type DashboardData } from '../lib/api';
-import { addDays, fmtDate, fmtDays, fmtHours, fmtShortDate, todayLocal } from '../lib/format';
+import { api, qs, type DashboardData, type OutcomeDashboardData } from '../lib/api';
+import { addDays, fmtDate, fmtDays, fmtHours, fmtNumber, fmtShortDate, outcomeColor, todayLocal } from '../lib/format';
+import { usePersistentState } from '../lib/prefs';
 import { useEpics, useOutcomes, useSectors, useUserOptions } from '../lib/queries';
 
 // Cores do design system RC+ apps (monocromático): série principal em preto, contexto em cinza, grade em border.
@@ -54,7 +55,11 @@ function presetRange(p: Preset): { from: string; to: string } {
   return { from: addDays(today, -(days - 1)), to: today };
 }
 
+type Kind = 'tasks' | 'outcomes';
+
 export function DashboardPage() {
+  const [prefs, setPrefs] = usePersistentState('dashboard.prefs', { kind: 'tasks' as Kind });
+  const kind: Kind = prefs.kind === 'outcomes' ? 'outcomes' : 'tasks';
   const [preset, setPreset] = useState<Preset>(DEFAULT_PRESET);
   const [range, setRange] = useState(presetRange(DEFAULT_PRESET));
   const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '' });
@@ -64,11 +69,22 @@ export function DashboardPage() {
   const { data: outcomes } = useOutcomes();
 
   const params = { ...range, ...dims };
-  const { data, isLoading, error } = useQuery({
+  const tasksQ = useQuery({
     queryKey: ['dashboard', params],
     queryFn: () => api.get<DashboardData>(`/dashboard${qs(params)}`),
     placeholderData: (p) => p,
+    enabled: kind === 'tasks',
   });
+  // Na visão Outcomes, "Responsável" é o responsável do outcome; setor e outcome não se aplicam.
+  const outcomeParams = { ...range, epic_id: dims.epic_id, owner_id: dims.assignee_id };
+  const outcomesQ = useQuery({
+    queryKey: ['dashboard', 'outcomes', outcomeParams],
+    queryFn: () => api.get<OutcomeDashboardData>(`/dashboard/outcomes${qs(outcomeParams)}`),
+    placeholderData: (p) => p,
+    enabled: kind === 'outcomes',
+  });
+  const { isLoading, error } = kind === 'tasks' ? tasksQ : outcomesQ;
+  const period = kind === 'tasks' ? tasksQ.data?.period : outcomesQ.data?.period;
 
   const onPreset = (p: Preset) => {
     setPreset(p);
@@ -81,7 +97,32 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Indicadores de fluxo da área de Desenvolvimento" />
+      <PageHeader
+        title="Dashboard"
+        subtitle={kind === 'tasks' ? 'Indicadores de fluxo das tarefas da área de Desenvolvimento' : 'Indicadores dos outcomes: resultados de negócio e entregas'}
+        actions={
+          <div className="inline-flex rounded-md border border-slate-300 bg-white p-0.5 shadow-xs" role="tablist" aria-label="Indicadores de">
+            {(
+              [
+                ['tasks', 'Tarefas', KanbanSquare],
+                ['outcomes', 'Outcomes', Target],
+              ] as const
+            ).map(([key, label, Icon]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={kind === key}
+                onClick={() => setPrefs({ kind: key })}
+                className={`inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium ${
+                  kind === key ? 'bg-blue-600 text-[#eff0eb] shadow-[0_2px_6px_0_rgba(14,14,14,0.24)]' : 'text-slate-600 hover:bg-[rgba(14,14,14,0.05)]'
+                }`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+        }
+      />
       <div className="card mb-4 flex flex-wrap items-center gap-2 p-2.5">
         <select className={sel + on(preset !== DEFAULT_PRESET)} value={preset} onChange={(e) => onPreset(e.target.value as Preset)} aria-label="Período">
           {PRESETS.map((p) => (
@@ -100,20 +141,22 @@ export function DashboardPage() {
         <span className="mx-1 h-5 w-px bg-slate-200" />
         <select className={sel + on(dims.assignee_id)} value={dims.assignee_id} onChange={setDim('assignee_id')} aria-label="Responsável">
           <option value="">Responsável: todos</option>
-          {users?.map((u) => (
+          {users?.filter((u) => kind === 'tasks' || u.role !== 'requester').map((u) => (
             <option key={u.id} value={u.id}>
               {u.name}
             </option>
           ))}
         </select>
-        <select className={sel + on(dims.sector_id)} value={dims.sector_id} onChange={setDim('sector_id')} aria-label="Setor">
-          <option value="">Setor: todos</option>
-          {sectors?.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        {kind === 'tasks' && (
+          <select className={sel + on(dims.sector_id)} value={dims.sector_id} onChange={setDim('sector_id')} aria-label="Setor">
+            <option value="">Setor: todos</option>
+            {sectors?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
         <select className={`${sel} max-w-48${on(dims.epic_id)}`} value={dims.epic_id} onChange={(e) => setDims((d) => ({ ...d, epic_id: e.target.value, outcome_id: '' }))} aria-label="Épico">
           <option value="">Épico: todos</option>
           {epics?.map((e) => (
@@ -122,26 +165,29 @@ export function DashboardPage() {
             </option>
           ))}
         </select>
-        <select className={`${sel} max-w-48${on(dims.outcome_id)}`} value={dims.outcome_id} onChange={setDim('outcome_id')} aria-label="Outcome">
-          <option value="">Outcome: todos</option>
-          {outcomes
-            ?.filter((o) => !dims.epic_id || String(o.epic_id) === dims.epic_id)
-            .map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-        </select>
-        {data && (
+        {kind === 'tasks' && (
+          <select className={`${sel} max-w-48${on(dims.outcome_id)}`} value={dims.outcome_id} onChange={setDim('outcome_id')} aria-label="Outcome">
+            <option value="">Outcome: todos</option>
+            {outcomes
+              ?.filter((o) => !dims.epic_id || String(o.epic_id) === dims.epic_id)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+          </select>
+        )}
+        {period && (
           <span className="ml-auto text-xs text-slate-500">
-            {fmtDate(data.period.from)} – {fmtDate(data.period.to)}
+            {fmtDate(period.from)} – {fmtDate(period.to)}
           </span>
         )}
       </div>
 
       <ErrorText error={error} />
       {isLoading && <Spinner />}
-      {data && <DashboardBody data={data} />}
+      {kind === 'tasks' && tasksQ.data && <DashboardBody data={tasksQ.data} />}
+      {kind === 'outcomes' && outcomesQ.data && <OutcomesBody data={outcomesQ.data} />}
     </div>
   );
 }
@@ -303,6 +349,127 @@ function DashboardBody({ data }: { data: DashboardData }) {
       <p className="text-xs text-slate-400">
         Cycle Time, Lead Time, Throughput, Criadas e Tempo em cada coluna consideram o período selecionado. WIP, Atrasadas, Aging e Distribuição por status
         são o retrato atual. Fórmulas detalhadas em docs/ARQUITETURA.md.
+      </p>
+    </div>
+  );
+}
+
+function OutcomesBody({ data }: { data: OutcomeDashboardData }) {
+  const ind = data.indicator;
+  const val = (v: number | null, unit: string | null) => (v == null ? '—' : `${fmtNumber(v)}${unit ? ` ${unit}` : ''}`);
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <Kpi icon={<Target size={16} />} label="Outcomes abertos" value={String(data.open)} hint={`de ${data.total} ativos`} />
+        <Kpi icon={<CheckCircle2 size={16} />} label="Concluídos" value={String(data.completed)} hint={`${data.created} criado(s) no período`} />
+        <Kpi
+          icon={<Gauge size={16} />}
+          label="Progresso médio do indicador"
+          value={ind.avg_progress_open == null ? '—' : `${ind.avg_progress_open}%`}
+          hint={`${ind.open_measured} aberto(s) medido(s)${ind.open_without_indicator ? ` · ${ind.open_without_indicator} sem indicador` : ''}`}
+          title="Quanto do caminho baseline → meta os outcomes abertos já percorreram (média)."
+        />
+        <Kpi icon={<Trophy size={16} />} label="Meta atingida" value={String(ind.reached)} hint={`de ${ind.measured} com indicador completo`} />
+        <Kpi
+          icon={<AlertTriangle size={16} />}
+          label="Atrasados"
+          value={String(data.overdue)}
+          hint="abertos com data alvo vencida"
+          tone={data.overdue > 0 ? 'critical' : undefined}
+        />
+        <Kpi
+          icon={<Flag size={16} />}
+          label="Tempo médio com flag"
+          value={fmtHours(data.flag_time.avg_hours)}
+          hint={`${data.flag_time.periods ? `${data.flag_time.periods} bloqueio(s)` : 'nenhum bloqueio no período'} · ${data.flagged_now} com flag agora`}
+          title="Tempo entre colocar e retirar a flag (bloqueio) dos outcomes. Flags ainda ativas contam até agora."
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Progresso do indicador" subtitle="Outcomes abertos: quanto do caminho baseline → meta já foi percorrido" className="lg:col-span-2">
+          {data.progress.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(140, data.progress.length * 40)}>
+              <BarChart data={data.progress} layout="vertical" margin={{ top: 0, right: 48, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide domain={[0, 100]} />
+                <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+                  content={({ active, payload }) => {
+                    const p = active ? (payload?.[0]?.payload as OutcomeDashboardData['progress'][number] | undefined) : undefined;
+                    if (!p) return null;
+                    return (
+                      <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg">
+                        <div className="font-medium text-slate-900">{p.name}</div>
+                        <div className="mb-1 text-slate-500">Épico: {p.epic_name}</div>
+                        <div className="text-slate-600">
+                          {p.indicator_name}: {val(p.baseline, p.unit)} → <b className="text-slate-900">{val(p.current, p.unit)}</b> → {val(p.target, p.unit)}
+                        </div>
+                        <div className="text-slate-600">
+                          Progresso: <b className="text-slate-900">{p.progress}%</b>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar
+                  dataKey="progress"
+                  radius={[0, 4, 4, 0]}
+                  maxBarSize={22}
+                  isAnimationActive={false}
+                  label={{ position: 'right', fontSize: 12, fill: '#2e2e2c', formatter: (v: unknown) => `${v}%` }}
+                >
+                  {data.progress.map((p) => (
+                    <Cell key={p.id} fill={outcomeColor(p.color).dot} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[140px] items-center justify-center text-sm text-slate-400">
+              Nenhum outcome aberto com indicador completo (baseline, atual e meta).
+            </div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Entregas por outcome" subtitle="Tarefas concluídas × em aberto dos outcomes abertos">
+          {data.deliveries.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(160, data.deliveries.length * 40 + 30)}>
+              <BarChart data={data.deliveries} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={(v) => <span style={{ color: C.axis }}>{v}</span>} />
+                <Bar dataKey="done" name="Concluídas" stackId="t" fill={C.completed} maxBarSize={22} isAnimationActive={false} />
+                <Bar dataKey="open" name="Em aberto" stackId="t" fill={C.created} radius={[0, 4, 4, 0]} maxBarSize={22} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[160px] items-center justify-center text-sm text-slate-400">Nenhum outcome aberto com tarefas.</div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Distribuição por status" subtitle="Situação atual dos outcomes (com os filtros aplicados)">
+          {data.status_distribution.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(160, data.status_distribution.length * 40)}>
+              <BarChart data={data.status_distribution} layout="vertical" margin={{ top: 0, right: 32, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
+                <Bar dataKey="count" name="Outcomes" radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: 'right', fontSize: 12, fill: '#2e2e2c' }}>
+                  {data.status_distribution.map((s) => (
+                    <Cell key={s.status_id} fill={s.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[160px] items-center justify-center text-sm text-slate-400">Nenhum outcome com os filtros aplicados.</div>
+          )}
+        </ChartCard>
+      </div>
+      <p className="text-xs text-slate-400">
+        "Criados no período" e "Tempo médio com flag" consideram o período selecionado; os demais indicadores são o retrato atual dos outcomes ativos.
       </p>
     </div>
   );

@@ -3,7 +3,9 @@ import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
 import { badRequest } from '../../lib/http.js';
 import { addDays, isValidDate, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
+import { listOutcomes } from '../outcomes.js';
 import { buildTaskWhere } from '../tasks/service.js';
+import { computeOutcomeMetrics, type OutcomeRow, type StatusLite } from './outcomes.js';
 import {
   computeFlagTime,
   computeMetrics,
@@ -16,6 +18,8 @@ import {
 
 const qId = z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().int().positive().optional());
 const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(isValidDate).optional());
+
+const outcomeQuerySchema = z.object({ from: qDate, to: qDate, epic_id: qId, owner_id: qId });
 
 const querySchema = z.object({
   from: qDate,
@@ -103,6 +107,35 @@ export function dashboardRouter(db: DB) {
       wip_statuses: statuses
         .filter((s) => s.active && s.counts_in_wip && !s.is_completion_status && !s.is_cancel_status)
         .map((s) => s.name),
+    });
+  });
+
+  // Visão "Outcomes": indicadores dos outcomes (com filtros de épico e responsável).
+  r.get('/outcomes', (req, res) => {
+    const q = outcomeQuerySchema.parse(req.query);
+    const today = todayLocal();
+    const to = q.to ?? today;
+    const from = q.from ?? addDays(to, -89);
+    if (from > to) throw badRequest('A data inicial deve ser anterior à final.');
+    const rows = (listOutcomes(db, { epicId: q.epic_id }) as unknown as (OutcomeRow & { owner_id: number | null })[]).filter(
+      (o) => !q.owner_id || o.owner_id === q.owner_id,
+    );
+    const statuses = db.prepare('SELECT id, name, color, position FROM statuses ORDER BY position').all() as unknown as StatusLite[];
+
+    const ids = rows.map((o) => o.id);
+    const flagEvents = ids.length
+      ? (db
+          .prepare(
+            `SELECT entity_id AS task_id, action, created_at FROM flag_events
+              WHERE entity_type = 'outcome' AND entity_id IN (${ids.map(() => '?').join(',')})`,
+          )
+          .all(...ids) as unknown as FlagEvent[])
+      : [];
+
+    res.json({
+      period: { from, to },
+      ...computeOutcomeMetrics(rows, statuses, from, to, today),
+      flag_time: computeFlagTime(flagEvents, startOfLocalDayUtc(from), startOfLocalDayUtc(addDays(to, 1)), new Date()),
     });
   });
 

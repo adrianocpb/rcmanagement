@@ -247,6 +247,33 @@ export interface DashboardData {
   flag_time: { periods: number; tasks: number; avg_hours: number | null; median_hours: number | null; active: number };
 }
 
+/** Dashboard na visão "Outcomes" (GET /dashboard/outcomes). */
+export interface OutcomeDashboardData {
+  period: { from: string; to: string };
+  total: number;
+  open: number;
+  completed: number;
+  created: number;
+  overdue: number;
+  flagged_now: number;
+  indicator: { avg_progress_open: number | null; open_measured: number; open_without_indicator: number; reached: number; measured: number };
+  status_distribution: { status_id: number; name: string; color: string; position: number; count: number }[];
+  progress: {
+    id: number;
+    name: string;
+    color: string | null;
+    epic_name: string;
+    progress: number;
+    indicator_name: string | null;
+    unit: string | null;
+    baseline: number | null;
+    current: number | null;
+    target: number | null;
+  }[];
+  deliveries: { id: number; name: string; color: string | null; done: number; open: number }[];
+  flag_time: DashboardData['flag_time'];
+}
+
 // ---------- Solicitações de melhoria ----------
 
 export type RequestStatus = 'aguardando' | 'info' | 'aprovada' | 'recusada';
