@@ -367,4 +367,22 @@ CREATE TABLE api_tokens (
 );
 `,
   },
+  {
+    // Tags livres nas tarefas (ex.: fornecedor "Kynera"), para filtros e indicadores.
+    id: '015_task_tags',
+    sql: `
+CREATE TABLE tags (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+  color      TEXT,
+  created_at TEXT    NOT NULL
+);
+CREATE TABLE task_tags (
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  tag_id  INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, tag_id)
+);
+CREATE INDEX idx_task_tags_tag ON task_tags(tag_id);
+`,
+  },
 ];

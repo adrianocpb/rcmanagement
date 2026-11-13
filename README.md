@@ -32,6 +32,9 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   pede mais informação (volta para o solicitante complementar), recusa com motivo ou aprova
   convertendo em **Tarefa, Outcome ou Épico** com o formulário já preenchido. O item gerado mostra a
   solicitação de origem e os anexos; o solicitante acompanha o andamento em "Minhas solicitações".
+- **Tags nas tarefas** (ex.: o fornecedor "Kynera"): digite no cadastro da tarefa (sugere as existentes);
+  aparecem no quadro e na lista, filtram tarefas e o dashboard, que tem o gráfico **Tarefas por tag**.
+  Renomear, trocar a cor ou excluir: Administração → Tags.
 - **Flag (bloqueio)** em tarefas e outcomes: marca que o item depende de algo externo (ex.: o negócio
   liberar um acesso ou enviar um documento), com motivo. Colocar e retirar ficam no histórico; o
   quadro e a lista mostram o selo, a lista de tarefas filtra "Somente com flag" e o dashboard mostra o

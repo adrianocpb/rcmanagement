@@ -1,6 +1,6 @@
 import { FilterX, Search } from 'lucide-react';
 import { PRIORITY, PRIORITY_KEYS } from '../lib/format';
-import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '../lib/queries';
+import { useEpics, useOutcomes, useSectors, useStatuses, useTags, useUserOptions } from '../lib/queries';
 
 export interface TaskFilterValues {
   q: string;
@@ -11,6 +11,7 @@ export interface TaskFilterValues {
   priority: string;
   epic_id: string;
   outcome_id: string;
+  tag_id: string;
   period_field: string;
   from: string;
   to: string;
@@ -27,6 +28,7 @@ export const EMPTY_FILTERS: TaskFilterValues = {
   priority: '',
   epic_id: '',
   outcome_id: '',
+  tag_id: '',
   period_field: 'planned_end',
   from: '',
   to: '',
@@ -50,6 +52,7 @@ export function TaskFilters({
   const { data: sectors } = useSectors();
   const { data: epics } = useEpics();
   const { data: outcomes } = useOutcomes();
+  const { data: tags } = useTags();
   const set = (k: keyof TaskFilterValues) => (e: { target: { value: string } }) => {
     const next = { ...value, [k]: e.target.value };
     if (k === 'epic_id' && value.outcome_id) {
@@ -126,6 +129,14 @@ export function TaskFilters({
               {o.name}
             </option>
           ))}
+      </select>
+      <select className={`${sel} max-w-40${on(value.tag_id)}`} value={value.tag_id} onChange={set('tag_id')} aria-label="Tag">
+        <option value="">Tag: todas</option>
+        {tags?.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
       </select>
       <div
         className={`flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5${on(value.from || value.to)}`}

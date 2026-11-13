@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, type Epic, type Outcome, type Sector, type Status, type UserOption } from './api';
+import { api, type Epic, type Outcome, type Sector, type Status, type TagWithCount, type UserOption } from './api';
 
 export const useStatuses = () => useQuery({ queryKey: ['statuses'], queryFn: () => api.get<Status[]>('/statuses') });
+export const useTags = () => useQuery({ queryKey: ['tags'], queryFn: () => api.get<TagWithCount[]>('/tags') });
 export const useSectors = () => useQuery({ queryKey: ['sectors'], queryFn: () => api.get<Sector[]>('/sectors') });
 export const useUserOptions = () =>
   useQuery({ queryKey: ['users', 'options'], queryFn: () => api.get<UserOption[]>('/users/options') });

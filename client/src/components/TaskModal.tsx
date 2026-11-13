@@ -9,14 +9,15 @@ import { useEpics, useOutcomes, useSectors, useStatuses, useUserOptions } from '
 import { FlagControl, FlagEventText } from './Flag';
 import { OriginRequestCard } from './Requests';
 import { TaskComments } from './TaskComments';
-import { Avatar, DeadlineBadge, ErrorText, Field, Modal, OutcomeTag, PriorityBadge, Spinner, StatusPill } from './ui';
+import { TagInput } from './TagInput';
+import { Avatar, DeadlineBadge, ErrorText, Field, Modal, OutcomeTag, PriorityBadge, Spinner, StatusPill, TagChip } from './ui';
 
 /** Invalida tudo o que depende de tarefas. */
 export function useInvalidateTasks() {
   const qc = useQueryClient();
   return () =>
     Promise.all(
-      [['tasks'], ['task'], ['epics'], ['outcomes'], ['dashboard'], ['epic'], ['outcome'], ['trash']].map((k) =>
+      [['tasks'], ['task'], ['epics'], ['outcomes'], ['dashboard'], ['epic'], ['outcome'], ['trash'], ['tags']].map((k) =>
         qc.invalidateQueries({ queryKey: k }),
       ),
     );
@@ -140,6 +141,13 @@ function TaskDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
 
           <Section title="Informações">
             <p className="text-lg font-semibold text-slate-900">{task.title}</p>
+            {task.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {task.tags.map((t) => (
+                  <TagChip key={t.id} name={t.name} color={t.color} className="text-xs" />
+                ))}
+              </div>
+            )}
             <Text label="Descrição" value={task.description} />
             <Text label="Observações" value={task.notes} />
           </Section>
@@ -331,6 +339,7 @@ export function TaskForm({
 }) {
   const { user } = useAuth();
   const [f, setF] = useState<FormState>(() => toForm(task, defaults, prefill));
+  const [tags, setTags] = useState<string[]>(() => task?.tags.map((t) => t.name) ?? []);
   const set = (k: string) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const invalidate = useInvalidateTasks();
   const { open } = useTaskModal();
@@ -368,7 +377,7 @@ export function TaskForm({
 
   const save = useMutation({
     mutationFn: () => {
-      const body: Record<string, unknown> = { ...f };
+      const body: Record<string, unknown> = { ...f, tags };
       if (task) {
         body.started_at = localInputToIso(f.started_at);
         body.completed_at = localInputToIso(f.completed_at);
@@ -402,6 +411,9 @@ export function TaskForm({
       </Field>
       <Field label="Descrição">
         <textarea className="input min-h-20" value={f.description} onChange={set('description')} />
+      </Field>
+      <Field label="Tags (ex.: fornecedor)">
+        <TagInput value={tags} onChange={setTags} />
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-3">

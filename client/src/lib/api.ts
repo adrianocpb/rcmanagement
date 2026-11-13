@@ -199,6 +199,17 @@ export interface Task {
   flagged_at: string | null;
   flag_reason: string | null;
   flagged_by_name: string | null;
+  tags: Tag[];
+}
+/** Tag livre de tarefa (ex.: fornecedor). `color` é uma chave da paleta OUTCOME_COLOR. */
+export interface Tag {
+  id: number;
+  name: string;
+  color: string | null;
+}
+export interface TagWithCount extends Tag {
+  tasks_count: number;
+  created_at: string;
 }
 export interface HistoryEntry {
   id: number;
@@ -243,6 +254,8 @@ export interface DashboardData {
   time_in_status: { status_id: number; name: string; color: string; tasks: number; avg_days: number | null; median_days: number | null }[];
   /** Nomes dos status que contam no WIP. */
   wip_statuses: string[];
+  /** Tarefas por tag (com os filtros): abertas agora e concluídas no período. */
+  by_tag: { tag_id: number; name: string; color: string | null; open: number; completed: number }[];
   /** Tempo com flag (bloqueio): períodos que tocam o intervalo; flag ativa conta até agora. */
   flag_time: { periods: number; tasks: number; avg_hours: number | null; median_hours: number | null; active: number };
 }

@@ -16,6 +16,7 @@ import {
   sentOnly,
 } from '../../lib/validation.js';
 import { removeTaskUploads } from '../comments.js';
+import { parseTags, setTaskTags, TASK_TAGS_JSON, tagListSchema } from '../tags.js';
 import { getStatus, type StatusRow } from '../statuses.js';
 import { applyStatusEntry, deadlineState } from './rules.js';
 
@@ -33,6 +34,8 @@ export const createTaskSchema = z.object({
   estimated_hours: optionalNumber.refine((v) => v === null || v >= 0, 'não pode ser negativo'),
   planned_start_date: optionalDate,
   planned_end_date: optionalDate, // opcional: sem prazo, a tarefa nunca fica "atrasada"
+  /** Nomes das tags (tags novas são criadas). */
+  tags: tagListSchema.optional(),
 });
 
 export const updateTaskSchema = createTaskSchema
@@ -59,6 +62,8 @@ export type TaskFilters = {
   overdue?: boolean;
   /** Somente tarefas com flag. */
   flagged?: boolean;
+  /** Somente tarefas com esta tag. */
+  tag_id?: number;
   q?: string;
 };
 
@@ -73,6 +78,7 @@ const BASE_SELECT = `
          o.name  AS outcome_name,
          o.color AS outcome_color,
          fu.name AS flagged_by_name,
+         ${TASK_TAGS_JSON} AS tags,
          (SELECT COUNT(*) FROM task_comments c WHERE c.task_id = t.id) AS comments_count
     FROM tasks t
     JOIN statuses s   ON s.id = t.status_id
@@ -97,6 +103,7 @@ function decorate(row: TaskRow, today: string) {
   const state = deadlineState(row, !!row.is_completed, today, !!row.is_canceled);
   return {
     ...row,
+    tags: parseTags(row.tags),
     is_completed: !!row.is_completed,
     is_canceled: !!row.is_canceled,
     deadline_state: state,
@@ -143,6 +150,10 @@ export function buildTaskWhere(f: TaskFilters, today = todayLocal()) {
     params.push(today);
   }
   if (f.flagged) where.push('t.flagged_at IS NOT NULL');
+  if (f.tag_id) {
+    where.push('EXISTS (SELECT 1 FROM task_tags tt WHERE tt.task_id = t.id AND tt.tag_id = ?)');
+    params.push(f.tag_id);
+  }
   return { sql: where.join(' AND '), params };
 }
 
@@ -254,6 +265,7 @@ export function createTask(db: DB, input: unknown, userId: number, now = nowIso(
       );
     const newId = Number(info.lastInsertRowid);
     recordHistory(db, newId, null, status.id, userId, now);
+    if (d.tags?.length) setTaskTags(db, newId, d.tags);
     return newId;
   })();
   return getTask(db, id);
@@ -338,6 +350,7 @@ export function updateTask(db: DB, id: number, input: unknown, userId: number, n
       id,
     );
     if (statusChanged) recordHistory(db, id, current.status_id, newStatusId, userId, now);
+    if (d.tags !== undefined) setTaskTags(db, id, d.tags);
   })();
   return getTask(db, id);
 }

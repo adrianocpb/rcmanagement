@@ -28,6 +28,7 @@ const querySchema = z.object({
   sector_id: qId,
   epic_id: qId,
   outcome_id: qId,
+  tag_id: qId,
 });
 
 export function dashboardRouter(db: DB) {
@@ -42,7 +43,7 @@ export function dashboardRouter(db: DB) {
 
     // Filtros de dimensão; o período é aplicado dentro de computeMetrics por indicador.
     const { sql, params } = buildTaskWhere(
-      { assignee_id: q.assignee_id, sector_id: q.sector_id, epic_id: q.epic_id, outcome_id: q.outcome_id },
+      { assignee_id: q.assignee_id, sector_id: q.sector_id, epic_id: q.epic_id, outcome_id: q.outcome_id, tag_id: q.tag_id },
       today,
     );
     const rows = db
@@ -91,7 +92,25 @@ export function dashboardRouter(db: DB) {
       )
       .all(...params) as unknown as FlagEvent[];
 
+    // Tarefas por tag (com os mesmos filtros): abertas agora e concluídas no período.
+    const by_tag = db
+      .prepare(
+        `SELECT g.id AS tag_id, g.name, g.color,
+                SUM(CASE WHEN s.is_completion_status = 0 AND s.is_cancel_status = 0 THEN 1 ELSE 0 END) AS open,
+                SUM(CASE WHEN s.is_completion_status = 1 AND t.completed_at >= ? AND t.completed_at < ? THEN 1 ELSE 0 END) AS completed
+           FROM task_tags tt
+           JOIN tags g ON g.id = tt.tag_id
+           JOIN tasks t ON t.id = tt.task_id
+           JOIN statuses s ON s.id = t.status_id
+          WHERE ${sql}
+          GROUP BY g.id
+         HAVING open > 0 OR completed > 0
+          ORDER BY open + completed DESC, g.name COLLATE NOCASE`,
+      )
+      .all(startOfLocalDayUtc(from), startOfLocalDayUtc(addDays(to, 1)), ...params);
+
     res.json({
+      by_tag,
       flag_time: computeFlagTime(flagEvents, startOfLocalDayUtc(from), startOfLocalDayUtc(addDays(to, 1)), new Date()),
       ...computeMetrics({ tasks, from, to, today, now: new Date() }),
       time_in_status: computeTimeInStatus(

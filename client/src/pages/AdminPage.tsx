@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { IntegrationsTab } from '../components/IntegrationsTab';
+import { TagsTab } from '../components/TagsTab';
 import { ErrorText, Field, Modal, PageHeader, Spinner } from '../components/ui';
 import { api, type Role, type Sector, type Status, type User } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { ROLE_LABEL, fmtDateTime } from '../lib/format';
 import { useSectors, useStatuses } from '../lib/queries';
 
-type Tab = 'users' | 'sectors' | 'statuses' | 'integrations';
+type Tab = 'users' | 'sectors' | 'statuses' | 'tags' | 'integrations';
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('statuses');
@@ -16,11 +17,12 @@ export function AdminPage() {
     ['statuses', 'Status'],
     ['users', 'Usuários'],
     ['sectors', 'Setores'],
+    ['tags', 'Tags'],
     ['integrations', 'Integrações'],
   ];
   return (
     <div className="max-w-4xl">
-      <PageHeader title="Administração" subtitle="Configurações de usuários, setores, status do fluxo e integrações." />
+      <PageHeader title="Administração" subtitle="Configurações de usuários, setores, status do fluxo, tags e integrações." />
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         {tabs.map(([k, label]) => (
           <button
@@ -37,6 +39,7 @@ export function AdminPage() {
       {tab === 'users' && <UsersTab />}
       {tab === 'sectors' && <SectorsTab />}
       {tab === 'statuses' && <StatusesTab />}
+      {tab === 'tags' && <TagsTab />}
       {tab === 'integrations' && <IntegrationsTab />}
     </div>
   );

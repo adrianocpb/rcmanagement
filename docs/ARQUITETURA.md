@@ -128,6 +128,11 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
   restaurar o épico os traz de volta; um outcome cujo épico está na lixeira só volta com o épico. As
   tarefas nunca vão junto: enquanto o épico/outcome está na lixeira, elas só deixam de mostrá-lo; na
   exclusão definitiva o vínculo (`epic_id`/`outcome_id`) é removido.
+- **Tags das tarefas** (migration `015`, `server/src/modules/tags.ts`): `tags` (nome único sem
+  diferenciar maiúsculas, cor da paleta) e `task_tags`. As tarefas recebem `tags` como lista de nomes
+  (até 10; nomes novos criam a tag; enviar a lista substitui as tags, não enviar mantém). Filtro
+  `tag_id` na lista de tarefas e no dashboard; o dashboard traz `by_tag` (abertas agora × concluídas
+  no período). Renomear/cor/excluir: administradores (`/api/tags`).
 - **Conector MCP** (`server/src/modules/mcp.ts`, `POST /mcp`, Streamable HTTP sem sessão, SDK
   `@modelcontextprotocol/sdk`): autenticado por `Authorization: Bearer <token>`; os tokens
   (`api_tokens`, migration `014`, só o hash SHA-256 é guardado) são criados e revogados por

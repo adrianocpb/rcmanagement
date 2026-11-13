@@ -4,7 +4,7 @@ import { fmtShortDate, PRIORITY } from '../lib/format';
 import { Board, BoardCard, byBoardPosition } from './Board';
 import { FlagBadge } from './Flag';
 import { useInvalidateTasks, useTaskModal } from './TaskModal';
-import { Avatar, DeadlineBadge, OutcomeTag, PriorityBadge } from './ui';
+import { Avatar, DeadlineBadge, OutcomeTag, PriorityBadge, TagChip } from './ui';
 
 /** Ordem dos cards dentro de cada coluna. "manual" = ordem definida arrastando (a do PO). */
 export type CardSort = 'manual' | 'priority' | 'due' | 'created';
@@ -90,6 +90,13 @@ export function Card({ task, overlay }: { task: Task; overlay?: boolean }) {
       {task.outcome_name && (
         <div className="mb-1.5">
           <OutcomeTag name={task.outcome_name} color={task.outcome_color} clamp />
+        </div>
+      )}
+      {task.tags.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {task.tags.map((t) => (
+            <TagChip key={t.id} name={t.name} color={t.color} />
+          ))}
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5">

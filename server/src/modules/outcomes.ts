@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
 import { requireAdmin } from '../lib/auth.js';
+import { OUTCOME_COLORS } from '../lib/colors.js';
 import { moveItem, placement } from '../lib/board.js';
 import { flagEvents, setFlag } from '../lib/flags.js';
 import { trashOutcome } from './trash.js';
@@ -19,8 +20,7 @@ import {
   requiredText,
 } from '../lib/validation.js';
 
-/** Paleta das cores dos outcomes (os tons ficam no frontend: client/src/lib/format.ts). */
-export const OUTCOME_COLORS = ['azul', 'verde', 'roxo', 'rosa', 'laranja', 'turquesa', 'amarelo', 'indigo', 'marrom', 'oliva'] as const;
+export { OUTCOME_COLORS };
 
 /** Cor menos usada entre os outcomes ativos (empate: ordem da paleta), para novos outcomes se distinguirem. */
 function nextColor(db: DB) {

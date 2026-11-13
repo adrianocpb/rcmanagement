@@ -3,7 +3,7 @@ import { PRIORITY, fmtDate, fmtDateOfInstant, fmtNumber } from '../lib/format';
 import { useTaskModal } from './TaskModal';
 import { DataTable, type Column } from './DataTable';
 import { FlagBadge } from './Flag';
-import { DeadlineBadge, OutcomeTag, PriorityBadge, StatusPill } from './ui';
+import { DeadlineBadge, OutcomeTag, PriorityBadge, StatusPill, TagChip } from './ui';
 
 const COLUMNS: Column<Task>[] = [
   { key: 'title', label: 'Título', sort: (t) => t.title.toLowerCase(), render: (t) => <span className="font-medium text-slate-900">{t.title}</span>, className: 'min-w-56', wrap: true },
@@ -14,6 +14,16 @@ const COLUMNS: Column<Task>[] = [
   { key: 'requester', label: 'Solicitante', sort: (t) => t.requester_name, render: (t) => t.requester_name },
   { key: 'assignee', label: 'Responsável', sort: (t) => t.assignee_name, render: (t) => t.assignee_name },
   { key: 'outcome', label: 'Outcome', sort: (t) => t.outcome_name, render: (t) => (t.outcome_name ? <OutcomeTag name={t.outcome_name} color={t.outcome_color} clamp /> : <span className="text-slate-600">—</span>), className: 'min-w-44' },
+  {
+    key: 'tags',
+    label: 'Tags',
+    sort: (t) => t.tags.map((g) => g.name).join(', ').toLowerCase(),
+    render: (t) => (
+      <div className="flex max-w-56 flex-wrap gap-1">
+        {t.tags.length ? t.tags.map((g) => <TagChip key={g.id} name={g.name} color={g.color} />) : <span className="text-slate-400">—</span>}
+      </div>
+    ),
+  },
   {
     key: 'created',
     label: 'Criada em',

@@ -56,11 +56,11 @@ Você atua como PM do time de Desenvolvimento usando o conector "Gestão de Melh
 
 | Ferramenta | O que faz | Grava? |
 |---|---|---|
-| `contexto` | Status (colunas), setores, pessoas e solicitantes, com ids | não |
-| `listar_epicos` / `listar_outcomes` / `listar_tarefas` | Listagens (com filtros) | não |
+| `contexto` | Status (colunas), setores, pessoas, solicitantes e tags existentes | não |
+| `listar_epicos` / `listar_outcomes` / `listar_tarefas` | Listagens (com filtros; tarefas também por tag) | não |
 | `buscar` | Itens parecidos com um texto (ignora acentos), do mais parecido para o menos | não |
 | `detalhe` | Todos os campos de um épico, outcome ou tarefa (com histórico) | não |
-| `criar_epico` / `criar_outcome` / `criar_tarefa` | Cria itens (tarefa herda o épico do outcome) | sim |
+| `criar_epico` / `criar_outcome` / `criar_tarefa` | Cria itens (tarefa herda o épico do outcome; tarefa aceita tags) | sim |
 | `atualizar_epico` / `atualizar_outcome` / `atualizar_tarefa` | Altera só os campos informados (ex.: valor atual do indicador, status) | sim |
 | `flag` | Coloca ou retira a flag (bloqueio) de tarefa ou outcome, com motivo | sim |
 

@@ -41,6 +41,7 @@ export const taskFiltersSchema = z.object({
     z.enum(['planned_end', 'created', 'completed']).optional(),
   ),
   overdue: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
+  tag_id: qId,
   flagged: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
   q: z.string().trim().max(200).optional(),
 });

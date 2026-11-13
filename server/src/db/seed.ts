@@ -9,7 +9,8 @@ import { config } from '../config.js';
 import { hashPassword } from '../lib/auth.js';
 import { addDays, todayLocal, zonedWallTimeToUtc } from '../lib/time.js';
 import { legacyStatusToColumnSql } from '../lib/board.js';
-import { OUTCOME_COLORS } from '../modules/outcomes.js';
+import { OUTCOME_COLORS } from '../lib/colors.js';
+import { setTaskTags } from '../modules/tags.js';
 import { fillMissingBoardPositions } from '../modules/tasks/service.js';
 import { migrate, openDatabase, type DB } from './connection.js';
 
@@ -232,6 +233,13 @@ export function seedDemo(db: DB, now = new Date()) {
     insertFlag.run('task', resolved, 'add', 'Faltava o layout do extrato do banco', users.Pedro, hoursAgo(24 * 50));
     insertFlag.run('task', resolved, 'remove', 'Financeiro enviou o layout', users.Pedro, hoursAgo(24 * 48));
   }
+  // Tags de demonstração: tarefas feitas por um fornecedor.
+  for (const title of ['Integração do chat com a base de clientes', 'Painel de chamados em tempo real', 'Assinatura eletrônica de contratos de trabalho']) {
+    const id = taskId(title);
+    if (id) setTaskTags(db, id, ['Kynera']);
+  }
+  const quickWin = taskId('Ajuste de layout do boleto');
+  if (quickWin) setTaskTags(db, quickWin, ['Quick win']);
   // Épicos e outcomes do seed usam o status antigo; converte para as colunas do quadro.
   db.exec(legacyStatusToColumnSql('epics') + legacyStatusToColumnSql('outcomes'));
   // Estimativas ICE dos outcomes (impacto, confiança, facilidade) de demonstração.

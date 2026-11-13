@@ -19,7 +19,7 @@ import { ErrorText, PageHeader, Spinner } from '../components/ui';
 import { api, qs, type DashboardData, type OutcomeDashboardData } from '../lib/api';
 import { addDays, fmtDate, fmtDays, fmtHours, fmtNumber, fmtShortDate, outcomeColor, todayLocal } from '../lib/format';
 import { usePersistentState } from '../lib/prefs';
-import { useEpics, useOutcomes, useSectors, useUserOptions } from '../lib/queries';
+import { useEpics, useOutcomes, useSectors, useTags, useUserOptions } from '../lib/queries';
 
 // Cores do design system RC+ apps (monocromático): série principal em preto, contexto em cinza, grade em border.
 const C = {
@@ -62,7 +62,8 @@ export function DashboardPage() {
   const kind: Kind = prefs.kind === 'outcomes' ? 'outcomes' : 'tasks';
   const [preset, setPreset] = useState<Preset>(DEFAULT_PRESET);
   const [range, setRange] = useState(presetRange(DEFAULT_PRESET));
-  const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '' });
+  const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '', tag_id: '' });
+  const { data: tags } = useTags();
   const { data: users } = useUserOptions();
   const { data: sectors } = useSectors();
   const { data: epics } = useEpics();
@@ -175,6 +176,16 @@ export function DashboardPage() {
                   {o.name}
                 </option>
               ))}
+          </select>
+        )}
+        {kind === 'tasks' && (
+          <select className={`${sel} max-w-40${on(dims.tag_id)}`} value={dims.tag_id} onChange={setDim('tag_id')} aria-label="Tag">
+            <option value="">Tag: todas</option>
+            {tags?.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
           </select>
         )}
         {period && (
@@ -330,7 +341,24 @@ function DashboardBody({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Aging das tarefas abertas" subtitle="Dias desde o início real (ou criação, se ainda não iniciada)">
+        <ChartCard title="Tarefas por tag" subtitle="Abertas agora × concluídas no período (com os filtros aplicados)">
+          {data.by_tag.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(160, data.by_tag.length * 40 + 30)}>
+              <BarChart data={data.by_tag} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <XAxis type="number" hide allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12, fill: '#2e2e2c' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={(v) => <span style={{ color: C.axis }}>{v}</span>} />
+                <Bar dataKey="open" name="Abertas" stackId="t" fill={C.created} maxBarSize={22} isAnimationActive={false} />
+                <Bar dataKey="completed" name="Concluídas no período" stackId="t" fill={C.completed} radius={[0, 4, 4, 0]} maxBarSize={22} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[160px] items-center justify-center text-sm text-slate-400">Nenhuma tarefa com tag nos filtros aplicados.</div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Aging das tarefas abertas" subtitle="Dias desde o início real (ou criação, se ainda não iniciada)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={data.aging} margin={{ top: 16, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke={C.grid} />

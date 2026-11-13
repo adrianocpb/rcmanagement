@@ -19,8 +19,9 @@ import type { AuthUser } from '../lib/auth.js';
 import { setFlag } from '../lib/flags.js';
 import { HttpError, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
-import { OUTCOME_COLORS } from './outcomes.js';
+import { OUTCOME_COLORS } from '../lib/colors.js';
 import { createEpic, getEpic, listEpics, updateEpic } from './epics.js';
+import { listTags } from './tags.js';
 import { userFromToken } from './integrations.js';
 import { createOutcome, getOutcome, listOutcomes, updateOutcome } from './outcomes.js';
 import { createTask, getTask, listTasks, updateTask } from './tasks/service.js';
@@ -75,6 +76,7 @@ const taskSummary = (t: Row) => ({
   setor: t.sector_name,
   epico: t.epic_id && t.epic_name ? { id: t.epic_id, nome: t.epic_name } : null,
   outcome: t.outcome_id && t.outcome_name ? { id: t.outcome_id, nome: t.outcome_name } : null,
+  tags: ((t.tags as { name: string }[] | undefined) ?? []).map((g) => g.name),
   conclusao_prevista: t.planned_end_date,
   atrasada: !!t.is_overdue,
   flag: t.flagged_at ? { desde: t.flagged_at, motivo: t.flag_reason } : null,
@@ -149,6 +151,11 @@ const taskFields = {
   estimated_hours: z.number().min(0).nullable().optional().describe('Tempo estimado, em horas'),
   planned_start_date: date.nullable().optional(),
   planned_end_date: date.nullable().optional().describe('Conclusão prevista (prazo)'),
+  tags: z
+    .array(z.string().min(1).max(40))
+    .max(10)
+    .optional()
+    .describe('Nomes das tags (ex.: fornecedor "Kynera"). Substitui as tags atuais; tags novas são criadas. Prefira as existentes (ver "contexto")'),
 };
 
 /** Remove chaves não enviadas (undefined), para que só o informado seja alterado. */
@@ -217,6 +224,7 @@ export function buildMcpServer(db: DB, user: AuthUser) {
         solicitantes: db.prepare("SELECT id, name AS nome FROM users WHERE active = 1 AND role = 'requester' ORDER BY name").all(),
         prioridades: ['baixa', 'media', 'alta', 'urgente'],
         cores_de_outcome: OUTCOME_COLORS,
+        tags: (listTags(db) as { name: string; tasks_count: number }[]).map((g) => ({ nome: g.name, tarefas: g.tasks_count })),
       })),
   );
 
@@ -251,13 +259,17 @@ export function buildMcpServer(db: DB, user: AuthUser) {
         texto: z.string().max(200).optional().describe('Parte do título ou da descrição'),
         somente_com_flag: z.boolean().optional(),
         somente_atrasadas: z.boolean().optional(),
+        tag: z.string().max(40).optional().describe('Somente tarefas com esta tag (nome)'),
         limite: z.number().int().min(1).max(500).optional(),
       },
       annotations: READ,
     },
     (a) =>
       run(() => {
+        const tagId = a.tag ? (db.prepare('SELECT id FROM tags WHERE name = ?').get(a.tag.trim()) as { id: number } | undefined)?.id : undefined;
+        if (a.tag && !tagId) return { total: 0, exibidas: 0, tarefas: [], aviso: `Não existe a tag "${a.tag}".` };
         const all = listTasks(db, {
+          tag_id: tagId,
           epic_id: a.epic_id,
           outcome_id: a.outcome_id,
           status_id: a.status_id,

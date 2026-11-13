@@ -15,6 +15,7 @@ import { outcomesRouter } from './modules/outcomes.js';
 import { requestsRouter } from './modules/requests/router.js';
 import { sectorsRouter } from './modules/sectors.js';
 import { statusesRouter } from './modules/statuses.js';
+import { tagsRouter } from './modules/tags.js';
 import { tasksRouter } from './modules/tasks/router.js';
 import { trashRouter } from './modules/trash.js';
 import { integrationsRouter } from './modules/integrations.js';
@@ -44,6 +45,7 @@ export function createApp(db: DB) {
   api.use('/epics', requireTeam, epicsRouter(db));
   api.use('/outcomes', requireTeam, outcomesRouter(db));
   api.use('/tasks', requireTeam, tasksRouter(db));
+  api.use('/tags', requireTeam, tagsRouter(db));
   api.use('/trash', requireTeam, trashRouter(db));
   api.use('/dashboard', requireTeam, dashboardRouter(db));
   api.use('/integrations', requireTeam, integrationsRouter(db)); // tokens: só administradores

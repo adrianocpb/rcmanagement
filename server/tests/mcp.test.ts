@@ -128,6 +128,21 @@ describe('conector MCP', () => {
     expect(list.total).toBe(1);
   });
 
+  it('tags: cria tarefa com tag e lista por tag', async () => {
+    const c = (await call('contexto')).data;
+    expect(c.tags.some((g: { nome: string }) => g.nome === 'Kynera')).toBe(true);
+    const ana = c.pessoas.find((p: { nome: string }) => p.nome === 'Ana');
+    const t = (
+      await call('criar_tarefa', { title: 'Integração Kynera', sector_id: c.setores[0].id, requester_id: ana.id, assignee_id: ana.id, tags: ['Kynera'] })
+    ).data;
+    expect(t.tags).toEqual(['Kynera']);
+    const list = (await call('listar_tarefas', { tag: 'kynera' })).data;
+    expect(list.tarefas.some((x: { id: number }) => x.id === t.id)).toBe(true);
+    expect((await call('listar_tarefas', { tag: 'Inexistente' })).data.total).toBe(0);
+    const edited = (await call('atualizar_tarefa', { id: t.id, tags: ['Kynera', 'Urgente cliente'] })).data;
+    expect(edited.tags).toEqual(['Kynera', 'Urgente cliente']);
+  });
+
   it('erros de validação voltam como mensagem legível', async () => {
     const r = await call('criar_outcome', { epic_id: 999999, name: 'X' });
     expect(r.isError).toBe(true);

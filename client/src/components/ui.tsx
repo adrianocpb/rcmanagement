@@ -81,6 +81,24 @@ export function OutcomeTag({ name, color, clamp, className = '' }: { name: strin
   );
 }
 
+/** Tag de tarefa: contorno neutro com ponto colorido (diferente da tag de outcome, que é preenchida). */
+export function TagChip({ name, color, onRemove, className = '' }: { name: string; color: string | null; onRemove?: () => void; className?: string }) {
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-1 rounded-full border border-slate-300 bg-white px-1.5 py-px text-[11px] leading-4 font-medium text-slate-700 ${className}`}
+      title={`Tag: ${name}`}
+    >
+      <span className="size-1.5 shrink-0 rounded-full" style={{ background: outcomeColor(color).dot }} />
+      <span className="truncate">{name}</span>
+      {onRemove && (
+        <button type="button" onClick={onRemove} className="-mr-0.5 rounded-full text-slate-400 hover:text-slate-800" aria-label={`Remover tag ${name}`}>
+          <X size={11} />
+        </button>
+      )}
+    </span>
+  );
+}
+
 export type BoardView = 'kanban' | 'list';
 
 /** Alternância Kanban / Lista (tarefas, outcomes e épicos). */
