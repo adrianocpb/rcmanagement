@@ -242,6 +242,9 @@ export function seedDemo(db: DB, now = new Date()) {
   if (quickWin) setTaskTags(db, quickWin, ['Quick win']);
   // Épicos e outcomes do seed usam o status antigo; converte para as colunas do quadro.
   db.exec(legacyStatusToColumnSql('epics') + legacyStatusToColumnSql('outcomes'));
+  // Horizontes de demonstração (os outcomes herdam o do épico).
+  db.exec(`UPDATE epics SET horizon = CASE name WHEN 'Gestão de Pessoas Digital' THEN 'H2' ELSE 'H1' END;
+           UPDATE outcomes SET horizon = (SELECT horizon FROM epics WHERE epics.id = outcomes.epic_id);`);
   // Estimativas ICE dos outcomes (impacto, confiança, facilidade) de demonstração.
   const setOutcomeIce = db.prepare('UPDATE outcomes SET ice_impact = ?, ice_confidence = ?, ice_ease = ? WHERE id = ?');
   [

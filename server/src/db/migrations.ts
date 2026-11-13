@@ -385,4 +385,12 @@ CREATE TABLE task_tags (
 CREATE INDEX idx_task_tags_tag ON task_tags(tag_id);
 `,
   },
+  {
+    // Horizonte estratégico (modelo dos 3 horizontes) em épicos e outcomes.
+    id: '016_horizons',
+    sql: `
+ALTER TABLE epics ADD COLUMN horizon TEXT CHECK (horizon IN ('H1', 'H2', 'H3'));
+ALTER TABLE outcomes ADD COLUMN horizon TEXT CHECK (horizon IN ('H1', 'H2', 'H3'));
+`,
+  },
 ];

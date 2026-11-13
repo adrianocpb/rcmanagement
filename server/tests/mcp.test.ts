@@ -143,6 +143,15 @@ describe('conector MCP', () => {
     expect(edited.tags).toEqual(['Kynera', 'Urgente cliente']);
   });
 
+  it('horizonte: cria e filtra por horizonte', async () => {
+    const e = (await call('criar_epico', { name: 'Novas apostas', horizon: 'H3' })).data;
+    expect(e.horizonte).toBe('H3');
+    const o = (await call('criar_outcome', { epic_id: e.id, name: 'Piloto IA', horizon: 'H3' })).data;
+    expect((await call('atualizar_outcome', { id: o.id, current_value: 1 })).data.horizonte).toBe('H3'); // mantém
+    const list = (await call('listar_epicos', { horizonte: 'H3' })).data as { id: number }[];
+    expect(list.map((x) => x.id)).toEqual([e.id]);
+  });
+
   it('erros de validação voltam como mensagem legível', async () => {
     const r = await call('criar_outcome', { epic_id: 999999, name: 'X' });
     expect(r.isError).toBe(true);

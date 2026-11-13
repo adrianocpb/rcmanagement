@@ -1,7 +1,7 @@
 import { Columns3, List, Target, X } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
-import type { DeadlineState, Priority } from '../lib/api';
-import { DEADLINE, PRIORITY, initials, outcomeColor } from '../lib/format';
+import type { DeadlineState, Horizon, Priority } from '../lib/api';
+import { DEADLINE, HORIZON, PRIORITY, initials, outcomeColor } from '../lib/format';
 
 export function Modal({
   open,
@@ -95,6 +95,17 @@ export function TagChip({ name, color, onRemove, className = '' }: { name: strin
           <X size={11} />
         </button>
       )}
+    </span>
+  );
+}
+
+/** Selo do horizonte (H1/H2/H3). */
+export function HorizonBadge({ horizon, full }: { horizon: Horizon | null | undefined; full?: boolean }) {
+  if (!horizon) return null;
+  const h = HORIZON[horizon];
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] leading-none font-semibold whitespace-nowrap ${h.cls}`} title={h.hint}>
+      {full ? h.label : horizon}
     </span>
   );
 }

@@ -1,4 +1,4 @@
-import type { ConvertType, DeadlineState, Priority, RequestStatus, Role } from './api';
+import type { ConvertType, DeadlineState, Horizon, Priority, RequestStatus, Role } from './api';
 
 /**
  * Fuso horário da aplicação. Vem do servidor (/api/config) para que toda a exibição use o mesmo
@@ -114,6 +114,14 @@ export const PRIORITY: Record<Priority, { label: string; cls: string; dot: strin
   media: { label: 'Média', cls: 'bg-sky-50 text-sky-700', dot: 'bg-sky-500', order: 2 },
   baixa: { label: 'Baixa', cls: 'bg-[rgba(107,107,102,0.16)] text-slate-600', dot: 'bg-slate-400', order: 3 },
 };
+/** Modelo dos 3 horizontes (McKinsey): do negócio atual às apostas de futuro. */
+export const HORIZON: Record<Horizon, { label: string; hint: string; cls: string }> = {
+  H1: { label: 'H1 — Core', hint: 'Horizonte 1: negócio atual (core), eficiência e melhoria contínua', cls: 'bg-slate-900 text-[#eff0eb]' },
+  H2: { label: 'H2 — Expansão', hint: 'Horizonte 2: negócios emergentes, expansão do core', cls: 'bg-slate-500 text-white' },
+  H3: { label: 'H3 — Futuro', hint: 'Horizonte 3: novas apostas e opções de futuro', cls: 'border border-dashed border-slate-500 text-slate-700 bg-white' },
+};
+export const HORIZON_KEYS: Horizon[] = ['H1', 'H2', 'H3'];
+
 export const PRIORITY_KEYS: Priority[] = ['urgente', 'alta', 'media', 'baixa'];
 
 /**

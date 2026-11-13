@@ -20,6 +20,7 @@ import { setFlag } from '../lib/flags.js';
 import { HttpError, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
 import { OUTCOME_COLORS } from '../lib/colors.js';
+import { HORIZONS } from '../lib/horizons.js';
 import { createEpic, getEpic, listEpics, updateEpic } from './epics.js';
 import { listTags } from './tags.js';
 import { userFromToken } from './integrations.js';
@@ -28,7 +29,8 @@ import { createTask, getTask, listTasks, updateTask } from './tasks/service.js';
 
 const INSTRUCTIONS = `Sistema "Gestão de Melhorias" (RC+): épicos (estratégicos, ligados a um OKR) → outcomes
 (resultados de negócio com indicador baseline → atual → meta) → tarefas (entregas). Todos usam as mesmas
-colunas (status) do quadro Kanban.
+colunas (status) do quadro Kanban. Épicos e outcomes podem ter um horizonte (modelo dos 3 horizontes):
+H1 = negócio atual (core), H2 = expansão/emergente, H3 = novas apostas de futuro.
 Boas práticas:
 1. Chame "contexto" para conhecer status, setores e pessoas (ids) antes de criar ou editar.
 2. Antes de criar qualquer item, use "buscar" para verificar se já existe algo igual ou parecido.
@@ -43,6 +45,7 @@ type Row = Record<string, unknown>;
 const epicSummary = (e: Row) => ({
   id: e.id,
   nome: e.name,
+  horizonte: e.horizon,
   okr: e.okr,
   status: e.status_name,
   responsavel: e.owner_name,
@@ -54,6 +57,7 @@ const epicSummary = (e: Row) => ({
 const outcomeSummary = (o: Row) => ({
   id: o.id,
   nome: o.name,
+  horizonte: o.horizon,
   epico: { id: o.epic_id, nome: o.epic_name },
   status: o.status_name,
   responsavel: o.owner_name,
@@ -115,7 +119,14 @@ const text = (max = 5000) => z.string().max(max);
 const ice = z.number().int().min(1).max(10);
 const priority = z.enum(['baixa', 'media', 'alta', 'urgente']);
 
+const horizon = z
+  .enum(HORIZONS)
+  .nullable()
+  .optional()
+  .describe('Horizonte (3 horizontes): H1 = negócio atual (core), H2 = expansão/emergente, H3 = novas apostas de futuro');
+
 const epicFields = {
+  horizon,
   description: text().nullable().optional().describe('Descrição'),
   okr: text(500).nullable().optional().describe('Objetivo/OKR relacionado (texto)'),
   owner_id: id.nullable().optional().describe('Responsável (id de pessoa, ver "contexto")'),
@@ -125,6 +136,7 @@ const epicFields = {
 };
 
 const outcomeFields = {
+  horizon,
   description: text().nullable().optional(),
   owner_id: id.nullable().optional().describe('Responsável (id de pessoa)'),
   status_id: id.optional().describe('Coluna do quadro (id de status). Vazio = status padrão'),
@@ -230,8 +242,14 @@ export function buildMcpServer(db: DB, user: AuthUser) {
 
   server.registerTool(
     'listar_epicos',
-    { title: 'Listar épicos', description: 'Lista os épicos (fora da lixeira).', inputSchema: { incluir_inativos: z.boolean().optional() }, annotations: READ },
-    ({ incluir_inativos }) => run(() => listEpics(db, !!incluir_inativos).map(epicSummary)),
+    {
+      title: 'Listar épicos',
+      description: 'Lista os épicos (fora da lixeira).',
+      inputSchema: { incluir_inativos: z.boolean().optional(), horizonte: z.enum(HORIZONS).optional() },
+      annotations: READ,
+    },
+    ({ incluir_inativos, horizonte }) =>
+      run(() => listEpics(db, !!incluir_inativos).filter((e) => !horizonte || e.horizon === horizonte).map(epicSummary)),
   );
 
   server.registerTool(
@@ -239,11 +257,19 @@ export function buildMcpServer(db: DB, user: AuthUser) {
     {
       title: 'Listar outcomes',
       description: 'Lista os outcomes, opcionalmente de um épico.',
-      inputSchema: { epic_id: id.optional().describe('Somente deste épico'), incluir_inativos: z.boolean().optional() },
+      inputSchema: {
+        epic_id: id.optional().describe('Somente deste épico'),
+        incluir_inativos: z.boolean().optional(),
+        horizonte: z.enum(HORIZONS).optional(),
+      },
       annotations: READ,
     },
-    ({ epic_id, incluir_inativos }) =>
-      run(() => listOutcomes(db, { epicId: epic_id, includeInactive: !!incluir_inativos }).map(outcomeSummary)),
+    ({ epic_id, incluir_inativos, horizonte }) =>
+      run(() =>
+        listOutcomes(db, { epicId: epic_id, includeInactive: !!incluir_inativos })
+          .filter((o) => !horizonte || o.horizon === horizonte)
+          .map(outcomeSummary),
+      ),
   );
 
   server.registerTool(
@@ -372,7 +398,7 @@ export function buildMcpServer(db: DB, user: AuthUser) {
     (a) => run(() => taskSummary(createTask(db, sent(a), user.id) as Row)),
   );
 
-  const EPIC_KEYS = ['name', 'description', 'okr', 'owner_id', 'status_id', 'start_date', 'end_date', 'active'];
+  const EPIC_KEYS = ['name', 'description', 'okr', 'owner_id', 'status_id', 'start_date', 'end_date', 'active', 'horizon'];
   server.registerTool(
     'atualizar_epico',
     {
@@ -387,7 +413,7 @@ export function buildMcpServer(db: DB, user: AuthUser) {
 
   const OUTCOME_KEYS = [
     'epic_id', 'name', 'description', 'owner_id', 'status_id', 'start_date', 'target_date', 'indicator_name', 'indicator_unit',
-    'baseline_value', 'target_value', 'current_value', 'ice_impact', 'ice_confidence', 'ice_ease', 'active',
+    'baseline_value', 'target_value', 'current_value', 'ice_impact', 'ice_confidence', 'ice_ease', 'active', 'horizon',
   ];
   server.registerTool(
     'atualizar_outcome',

@@ -93,11 +93,14 @@ export interface Status {
   is_cancel_status: number;
   active: number;
 }
+/** Modelo dos 3 horizontes (opcional em épicos e outcomes). */
+export type Horizon = 'H1' | 'H2' | 'H3';
 export interface Epic {
   id: number;
   name: string;
   description: string | null;
   okr: string | null;
+  horizon: Horizon | null;
   owner_id: number | null;
   owner_name: string | null;
   /** Coluna do quadro (mesmos status das tarefas). */
@@ -121,6 +124,7 @@ export interface Epic {
 export interface Outcome {
   id: number;
   epic_id: number;
+  horizon: Horizon | null;
   epic_name: string;
   name: string;
   description: string | null;

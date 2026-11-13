@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Flag, Pencil, Plus, Target } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Board, BoardCard, byBoardPosition } from '../components/Board';
 import { DataTable, type Column } from '../components/DataTable';
+import { HorizonFilter, HorizonSelect } from '../components/HorizonSelect';
 import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
 import { ICE_SORT_OPTIONS, IceBadge, IceFields, IceStrip, sortByIce, type IceSortKey } from '../components/Ice';
 import { FlagBadge, FlagControl, FlagEventText } from '../components/Flag';
@@ -11,7 +12,7 @@ import { OriginRequestCard } from '../components/Requests';
 import { TrashButton } from '../components/TrashButton';
 import { TaskTable } from '../components/TaskTable';
 import { useTaskModal } from '../components/TaskModal';
-import { Avatar, ErrorText, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
+import { Avatar, ErrorText, HorizonBadge, Field, Modal, OutcomeTag, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
 import { api, type Outcome, type Task } from '../lib/api';
 import { OUTCOME_COLOR, OUTCOME_COLOR_KEYS, fmtDate, fmtDateTime, fmtDateOfInstant, fmtNumber, outcomeColor } from '../lib/format';
 import { usePersistentState } from '../lib/prefs';
@@ -72,6 +73,7 @@ export function OutcomeCard({ outcome: o }: { outcome: Outcome }) {
       <div className="mb-1 flex items-start gap-2">
         <Target size={16} className="mt-0.5 shrink-0" style={{ color: outcomeColor(o.color).dot }} />
         <h3 className="flex-1 font-semibold text-slate-900 group-hover:text-blue-700">{o.name}</h3>
+        <HorizonBadge horizon={o.horizon} />
         <IceBadge score={o.ice_score} />
         <StatusPill name={o.status_name} color={o.status_color} />
       </div>
@@ -106,6 +108,7 @@ function OutcomeBoardCard({ outcome: o, overlay }: { outcome: Outcome; overlay?:
       <div className="mb-1.5 flex items-start gap-2">
         <Target size={14} className="mt-0.5 shrink-0" style={{ color: c.dot }} />
         <h3 className="flex-1 text-sm leading-snug font-medium text-slate-700">{o.name}</h3>
+        <HorizonBadge horizon={o.horizon} />
         {o.owner_name && <Avatar name={o.owner_name} id={o.owner_id} />}
       </div>
       <p className="mb-2 flex items-center gap-1 text-[11px] text-slate-500" title="Épico">
@@ -144,6 +147,7 @@ export function OutcomesPage() {
     sort: 'manual' as OutcomeSort,
     showInactive: false,
     epic: '',
+    horizon: '',
   });
   const { showInactive } = prefs;
   const sort: OutcomeSort = isOutcomeSort(prefs.sort) ? prefs.sort : 'manual';
@@ -151,7 +155,7 @@ export function OutcomesPage() {
   const { data: epics } = useEpics();
   const { data: statuses } = useStatuses();
   const [editing, setEditing] = useState<{ status_id?: number } | null>(null);
-  const list = outcomes?.filter((o) => !prefs.epic || String(o.epic_id) === prefs.epic) ?? [];
+  const list = outcomes?.filter((o) => (!prefs.epic || String(o.epic_id) === prefs.epic) && (!prefs.horizon || o.horizon === prefs.horizon)) ?? [];
   const sortColumn = (l: Outcome[]) =>
     sort === 'manual'
       ? byBoardPosition(l)
@@ -165,6 +169,7 @@ export function OutcomesPage() {
   const columns: Column<Outcome>[] = [
     { key: 'name', label: 'Outcome', sort: (o) => o.name.toLowerCase(), render: (o) => <OutcomeTag name={o.name} color={o.color} className="text-xs" />, className: 'min-w-56', wrap: true },
     { key: 'epic', label: 'Épico', sort: (o) => o.epic_name, render: (o) => o.epic_name, wrap: true, className: 'min-w-40' },
+    { key: 'horizon', label: 'Horizonte', sort: (o) => o.horizon, render: (o) => (o.horizon ? <HorizonBadge horizon={o.horizon} full /> : '—') },
     { key: 'status', label: 'Status', sort: order, render: (o) => <StatusPill name={o.status_name} color={o.status_color} /> },
     { key: 'owner', label: 'Responsável', sort: (o) => o.owner_name, render: (o) => o.owner_name ?? '—' },
     {
@@ -241,6 +246,7 @@ export function OutcomesPage() {
                 </option>
               ))}
             </select>
+            <HorizonFilter value={prefs.horizon} onChange={(horizon) => setPrefs((p) => ({ ...p, horizon }))} />
             <label
               className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
             >
@@ -316,6 +322,7 @@ export function OutcomeDetailPage() {
                 <span className="size-3 shrink-0 rounded-full" style={{ background: outcomeColor(o.color).dot }} title={`Cor: ${outcomeColor(o.color).label}`} />
                 <h1 className="text-xl font-semibold text-slate-900">{o.name}</h1>
                 <StatusPill name={o.status_name} color={o.status_color} />
+                <HorizonBadge horizon={o.horizon} full />
               </div>
               <p className="text-sm text-slate-500">
                 Épico:{' '}
@@ -421,6 +428,12 @@ export function OutcomeFormModal({
   const qc = useQueryClient();
   const { data: users } = useUserOptions();
   const { data: epics } = useEpics(true);
+  // Novo outcome já num épico (ex.: botão no detalhe do épico): sugere o horizonte do épico.
+  useEffect(() => {
+    if (outcome || !defaultEpicId) return;
+    const h = epics?.find((x) => x.id === defaultEpicId)?.horizon;
+    if (h) setF((p) => (p.horizon ? p : { ...p, horizon: h }));
+  }, [epics, outcome, defaultEpicId]);
   const s = (v: unknown) => (v == null ? '' : String(v));
   const [f, setF] = useState({
     name: s(outcome?.name ?? prefill?.name),
@@ -428,6 +441,7 @@ export function OutcomeFormModal({
     epic_id: s(outcome?.epic_id ?? defaultEpicId),
     owner_id: s(outcome?.owner_id),
     status_id: s(outcome?.status_id ?? defaultStatusId),
+    horizon: s(outcome?.horizon),
     start_date: s(outcome?.start_date),
     target_date: s(outcome?.target_date),
     indicator_name: s(outcome?.indicator_name ?? prefill?.indicator_name),
@@ -516,7 +530,16 @@ export function OutcomeFormModal({
         </Field>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Épico" required>
-            <select className="input" value={f.epic_id} onChange={set('epic_id')} required>
+            <select
+              className="input"
+              value={f.epic_id}
+              onChange={(e) => {
+                const v = e.target.value;
+                // Sem horizonte escolhido, o outcome herda o do épico (pode ser alterado).
+                setF((p) => ({ ...p, epic_id: v, horizon: p.horizon || (epics?.find((x) => String(x.id) === v)?.horizon ?? '') }));
+              }}
+              required
+            >
               <option value="">Selecione…</option>
               {epics?.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -537,6 +560,9 @@ export function OutcomeFormModal({
           </Field>
           <Field label="Status">
             <StatusSelect value={f.status_id} onChange={(v) => setF((p) => ({ ...p, status_id: v }))} />
+          </Field>
+          <Field label="Horizonte (3 horizontes)">
+            <HorizonSelect value={f.horizon} onChange={(v) => setF((p) => ({ ...p, horizon: v }))} />
           </Field>
           <Field label="Data inicial">
             <input className="input" type="date" value={f.start_date} onChange={set('start_date')} />

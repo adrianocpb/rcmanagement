@@ -7,6 +7,7 @@ import { idParam } from '../../lib/http.js';
 import { commentsRouter } from '../comments.js';
 import { setFlag } from '../../lib/flags.js';
 import { isValidDate, nowIso } from '../../lib/time.js';
+import { HORIZONS } from '../../lib/horizons.js';
 import { PRIORITIES } from '../../lib/validation.js';
 import {
   changeStatus,
@@ -42,6 +43,7 @@ export const taskFiltersSchema = z.object({
   ),
   overdue: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
   tag_id: qId,
+  horizon: z.preprocess((v) => (v === '' ? undefined : v), z.enum(HORIZONS).optional()),
   flagged: z.preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean()).optional(),
   q: z.string().trim().max(200).optional(),
 });

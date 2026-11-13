@@ -17,7 +17,7 @@ import {
 } from 'recharts';
 import { ErrorText, PageHeader, Spinner } from '../components/ui';
 import { api, qs, type DashboardData, type OutcomeDashboardData } from '../lib/api';
-import { addDays, fmtDate, fmtDays, fmtHours, fmtNumber, fmtShortDate, outcomeColor, todayLocal } from '../lib/format';
+import { HORIZON, HORIZON_KEYS, addDays, fmtDate, fmtDays, fmtHours, fmtNumber, fmtShortDate, outcomeColor, todayLocal } from '../lib/format';
 import { usePersistentState } from '../lib/prefs';
 import { useEpics, useOutcomes, useSectors, useTags, useUserOptions } from '../lib/queries';
 
@@ -62,7 +62,7 @@ export function DashboardPage() {
   const kind: Kind = prefs.kind === 'outcomes' ? 'outcomes' : 'tasks';
   const [preset, setPreset] = useState<Preset>(DEFAULT_PRESET);
   const [range, setRange] = useState(presetRange(DEFAULT_PRESET));
-  const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '', tag_id: '' });
+  const [dims, setDims] = useState({ assignee_id: '', sector_id: '', epic_id: '', outcome_id: '', tag_id: '', horizon: '' });
   const { data: tags } = useTags();
   const { data: users } = useUserOptions();
   const { data: sectors } = useSectors();
@@ -77,7 +77,7 @@ export function DashboardPage() {
     enabled: kind === 'tasks',
   });
   // Na visão Outcomes, "Responsável" é o responsável do outcome; setor e outcome não se aplicam.
-  const outcomeParams = { ...range, epic_id: dims.epic_id, owner_id: dims.assignee_id };
+  const outcomeParams = { ...range, epic_id: dims.epic_id, owner_id: dims.assignee_id, horizon: dims.horizon };
   const outcomesQ = useQuery({
     queryKey: ['dashboard', 'outcomes', outcomeParams],
     queryFn: () => api.get<OutcomeDashboardData>(`/dashboard/outcomes${qs(outcomeParams)}`),
@@ -178,6 +178,20 @@ export function DashboardPage() {
               ))}
           </select>
         )}
+        <select
+          className={sel + on(dims.horizon)}
+          value={dims.horizon}
+          onChange={setDim('horizon')}
+          aria-label="Horizonte"
+          title={kind === 'tasks' ? 'Horizonte do outcome da tarefa (ou do épico, se não houver outcome)' : 'Horizonte do outcome'}
+        >
+          <option value="">Horizonte: todos</option>
+          {HORIZON_KEYS.map((k) => (
+            <option key={k} value={k}>
+              {HORIZON[k].label}
+            </option>
+          ))}
+        </select>
         {kind === 'tasks' && (
           <select className={`${sel} max-w-40${on(dims.tag_id)}`} value={dims.tag_id} onChange={setDim('tag_id')} aria-label="Tag">
             <option value="">Tag: todas</option>

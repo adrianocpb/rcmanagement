@@ -4,6 +4,7 @@ import { originOf } from './requests/service.js';
 import type { DB } from '../db/connection.js';
 import { requireAdmin } from '../lib/auth.js';
 import { OUTCOME_COLORS } from '../lib/colors.js';
+import { horizonSchema } from '../lib/horizons.js';
 import { moveItem, placement } from '../lib/board.js';
 import { flagEvents, setFlag } from '../lib/flags.js';
 import { trashOutcome } from './trash.js';
@@ -51,6 +52,7 @@ const schema = z.object({
   ice_confidence: iceValue,
   ice_ease: iceValue,
   active: bool.default(true),
+  horizon: horizonSchema,
   color: z.preprocess((v) => (v === '' ? null : v), z.enum(OUTCOME_COLORS).nullish()),
 });
 
@@ -83,13 +85,13 @@ export function createOutcome(db: DB, input: unknown) {
     .prepare(
       `INSERT INTO outcomes (epic_id, name, description, owner_id, status_id, board_position, start_date, target_date, indicator_name,
                              indicator_unit, baseline_value, target_value, current_value, ice_impact, ice_confidence,
-                             ice_ease, active, color, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                             ice_ease, active, color, horizon, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
       d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
-      d.ice_confidence, d.ice_ease, +d.active, d.color ?? nextColor(db), now, now,
+      d.ice_confidence, d.ice_ease, +d.active, d.color ?? nextColor(db), d.horizon ?? null, now, now,
     );
   return db.prepare(`${OUTCOME_SELECT} WHERE o.deleted_at IS NULL AND o.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
@@ -117,8 +119,8 @@ export function getOutcome(db: DB, id: number) {
 
 /** Atualiza um outcome (todos os campos do formulário). Tarefas ligadas acompanham a troca de épico. */
 export function updateOutcome(db: DB, id: number, input: unknown) {
-  const current = db.prepare('SELECT id, status_id, board_position FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id) as
-    | { id: number; status_id: number | null; board_position: number | null }
+  const current = db.prepare('SELECT id, status_id, board_position, horizon FROM outcomes WHERE id = ? AND deleted_at IS NULL').get(id) as
+    | { id: number; status_id: number | null; board_position: number | null; horizon: string | null }
     | undefined;
   if (!current) throw notFound('Outcome');
   const d = schema.parse(input);
@@ -129,12 +131,12 @@ export function updateOutcome(db: DB, id: number, input: unknown) {
       `UPDATE outcomes SET epic_id = ?, name = ?, description = ?, owner_id = ?, status_id = ?, board_position = ?,
                            start_date = ?, target_date = ?, indicator_name = ?, indicator_unit = ?, baseline_value = ?,
                            target_value = ?, current_value = ?, ice_impact = ?, ice_confidence = ?, ice_ease = ?,
-                           active = ?, color = COALESCE(?, color), updated_at = ?
+                           active = ?, color = COALESCE(?, color), horizon = ?, updated_at = ?
         WHERE id = ?`,
     ).run(
       d.epic_id, d.name, d.description, d.owner_id, p.status_id, p.board_position, d.start_date, d.target_date,
       d.indicator_name, d.indicator_unit, d.baseline_value, d.target_value, d.current_value, d.ice_impact,
-      d.ice_confidence, d.ice_ease, +d.active, d.color ?? null, nowIso(), id,
+      d.ice_confidence, d.ice_ease, +d.active, d.color ?? null, d.horizon === undefined ? current.horizon : d.horizon, nowIso(), id,
     );
     // Mantém a coerência Épico → Outcome → Tarefa se o outcome mudar de épico.
     db.prepare('UPDATE tasks SET epic_id = ? WHERE outcome_id = ?').run(d.epic_id, id);

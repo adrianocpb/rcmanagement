@@ -32,6 +32,9 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   pede mais informação (volta para o solicitante complementar), recusa com motivo ou aprova
   convertendo em **Tarefa, Outcome ou Épico** com o formulário já preenchido. O item gerado mostra a
   solicitação de origem e os anexos; o solicitante acompanha o andamento em "Minhas solicitações".
+- **Horizontes (H1, H2, H3)** em épicos e outcomes (modelo dos 3 horizontes): selo nos cards, listas
+  e detalhes; filtro nas telas de épicos, outcomes e tarefas e no dashboard. A tarefa herda o horizonte
+  do outcome (ou do épico, se não tiver outcome); o outcome novo sugere o horizonte do épico.
 - **Tags nas tarefas** (ex.: o fornecedor "Kynera"): digite no cadastro da tarefa (sugere as existentes);
   aparecem no quadro e na lista, filtram tarefas e o dashboard, que tem o gráfico **Tarefas por tag**.
   Renomear, trocar a cor ou excluir: Administração → Tags.

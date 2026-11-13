@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { DB } from '../../db/connection.js';
 import { badRequest } from '../../lib/http.js';
 import { addDays, isValidDate, startOfLocalDayUtc, todayLocal } from '../../lib/time.js';
+import { HORIZONS } from '../../lib/horizons.js';
 import { listOutcomes } from '../outcomes.js';
 import { buildTaskWhere } from '../tasks/service.js';
 import { computeOutcomeMetrics, type OutcomeRow, type StatusLite } from './outcomes.js';
@@ -19,7 +20,13 @@ import {
 const qId = z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().int().positive().optional());
 const qDate = z.preprocess((v) => (v === '' ? undefined : v), z.string().refine(isValidDate).optional());
 
-const outcomeQuerySchema = z.object({ from: qDate, to: qDate, epic_id: qId, owner_id: qId });
+const outcomeQuerySchema = z.object({
+  from: qDate,
+  to: qDate,
+  epic_id: qId,
+  owner_id: qId,
+  horizon: z.preprocess((v) => (v === '' ? undefined : v), z.enum(HORIZONS).optional()),
+});
 
 const querySchema = z.object({
   from: qDate,
@@ -29,6 +36,7 @@ const querySchema = z.object({
   epic_id: qId,
   outcome_id: qId,
   tag_id: qId,
+  horizon: z.preprocess((v) => (v === '' ? undefined : v), z.enum(HORIZONS).optional()),
 });
 
 export function dashboardRouter(db: DB) {
@@ -43,7 +51,7 @@ export function dashboardRouter(db: DB) {
 
     // Filtros de dimensão; o período é aplicado dentro de computeMetrics por indicador.
     const { sql, params } = buildTaskWhere(
-      { assignee_id: q.assignee_id, sector_id: q.sector_id, epic_id: q.epic_id, outcome_id: q.outcome_id, tag_id: q.tag_id },
+      { assignee_id: q.assignee_id, sector_id: q.sector_id, epic_id: q.epic_id, outcome_id: q.outcome_id, tag_id: q.tag_id, horizon: q.horizon },
       today,
     );
     const rows = db
@@ -136,8 +144,8 @@ export function dashboardRouter(db: DB) {
     const to = q.to ?? today;
     const from = q.from ?? addDays(to, -89);
     if (from > to) throw badRequest('A data inicial deve ser anterior à final.');
-    const rows = (listOutcomes(db, { epicId: q.epic_id }) as unknown as (OutcomeRow & { owner_id: number | null })[]).filter(
-      (o) => !q.owner_id || o.owner_id === q.owner_id,
+    const rows = (listOutcomes(db, { epicId: q.epic_id }) as unknown as (OutcomeRow & { owner_id: number | null; horizon: string | null })[]).filter(
+      (o) => (!q.owner_id || o.owner_id === q.owner_id) && (!q.horizon || o.horizon === q.horizon),
     );
     const statuses = db.prepare('SELECT id, name, color, position FROM statuses ORDER BY position').all() as unknown as StatusLite[];
 

@@ -64,6 +64,8 @@ export type TaskFilters = {
   flagged?: boolean;
   /** Somente tarefas com esta tag. */
   tag_id?: number;
+  /** Horizonte herdado: o do outcome da tarefa ou, sem outcome, o do épico. */
+  horizon?: string;
   q?: string;
 };
 
@@ -150,6 +152,12 @@ export function buildTaskWhere(f: TaskFilters, today = todayLocal()) {
     params.push(today);
   }
   if (f.flagged) where.push('t.flagged_at IS NOT NULL');
+  if (f.horizon) {
+    where.push(
+      `COALESCE((SELECT horizon FROM outcomes WHERE id = t.outcome_id), (SELECT horizon FROM epics WHERE id = t.epic_id)) = ?`,
+    );
+    params.push(f.horizon);
+  }
   if (f.tag_id) {
     where.push('EXISTS (SELECT 1 FROM task_tags tt WHERE tt.task_id = t.id AND tt.tag_id = ?)');
     params.push(f.tag_id);

@@ -1,5 +1,5 @@
 import { FilterX, Search } from 'lucide-react';
-import { PRIORITY, PRIORITY_KEYS } from '../lib/format';
+import { HORIZON, HORIZON_KEYS, PRIORITY, PRIORITY_KEYS } from '../lib/format';
 import { useEpics, useOutcomes, useSectors, useStatuses, useTags, useUserOptions } from '../lib/queries';
 
 export interface TaskFilterValues {
@@ -12,6 +12,7 @@ export interface TaskFilterValues {
   epic_id: string;
   outcome_id: string;
   tag_id: string;
+  horizon: string;
   period_field: string;
   from: string;
   to: string;
@@ -29,6 +30,7 @@ export const EMPTY_FILTERS: TaskFilterValues = {
   epic_id: '',
   outcome_id: '',
   tag_id: '',
+  horizon: '',
   period_field: 'planned_end',
   from: '',
   to: '',
@@ -129,6 +131,20 @@ export function TaskFilters({
               {o.name}
             </option>
           ))}
+      </select>
+      <select
+        className={sel + on(value.horizon)}
+        value={value.horizon}
+        onChange={set('horizon')}
+        aria-label="Horizonte"
+        title="Horizonte do outcome da tarefa (ou do épico, se não houver outcome)"
+      >
+        <option value="">Horizonte: todos</option>
+        {HORIZON_KEYS.map((k) => (
+          <option key={k} value={k}>
+            {HORIZON[k].label}
+          </option>
+        ))}
       </select>
       <select className={`${sel} max-w-40${on(value.tag_id)}`} value={value.tag_id} onChange={set('tag_id')} aria-label="Tag">
         <option value="">Tag: todas</option>

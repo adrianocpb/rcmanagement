@@ -7,6 +7,7 @@ import { moveItem, placement } from '../lib/board.js';
 import { trashEpic } from './trash.js';
 import { idParam, notFound } from '../lib/http.js';
 import { nowIso } from '../lib/time.js';
+import { horizonSchema } from '../lib/horizons.js';
 import { bool, optionalDate, optionalId, optionalText, requiredText } from '../lib/validation.js';
 
 const schema = z.object({
@@ -19,6 +20,7 @@ const schema = z.object({
   start_date: optionalDate,
   end_date: optionalDate,
   active: bool.default(true),
+  horizon: horizonSchema,
 });
 
 /**
@@ -46,10 +48,10 @@ export function createEpic(db: DB, input: unknown) {
   const info = db
     .prepare(
       `INSERT INTO epics (name, description, okr, owner_id, status_id, board_position, start_date, end_date, active,
-                          created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                          horizon, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active, now, now);
+    .run(d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active, d.horizon ?? null, now, now);
   return db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(info.lastInsertRowid) as { id: number } & Record<string, unknown>;
 }
 
@@ -69,16 +71,19 @@ export function getEpic(db: DB, id: number) {
 
 /** Atualiza um épico (todos os campos do formulário). */
 export function updateEpic(db: DB, id: number, input: unknown) {
-  const current = db.prepare('SELECT id, status_id, board_position FROM epics WHERE id = ? AND deleted_at IS NULL').get(id) as
-    | { id: number; status_id: number | null; board_position: number | null }
+  const current = db.prepare('SELECT id, status_id, board_position, horizon FROM epics WHERE id = ? AND deleted_at IS NULL').get(id) as
+    | { id: number; status_id: number | null; board_position: number | null; horizon: string | null }
     | undefined;
   if (!current) throw notFound('Épico');
   const d = schema.parse(input);
   const p = placement(db, 'epics', d.status_id, current);
   db.prepare(
     `UPDATE epics SET name = ?, description = ?, okr = ?, owner_id = ?, status_id = ?, board_position = ?, start_date = ?,
-                      end_date = ?, active = ?, updated_at = ? WHERE id = ?`,
-  ).run(d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active, nowIso(), id);
+                      end_date = ?, active = ?, horizon = ?, updated_at = ? WHERE id = ?`,
+  ).run(
+    d.name, d.description, d.okr, d.owner_id, p.status_id, p.board_position, d.start_date, d.end_date, +d.active,
+    d.horizon === undefined ? current.horizon : d.horizon, nowIso(), id,
+  );
   return db.prepare(`${EPIC_SELECT} WHERE e.deleted_at IS NULL AND e.id = ?`).get(id) as { id: number } & Record<string, unknown>;
 }
 

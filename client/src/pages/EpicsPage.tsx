@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Board, BoardCard, byBoardPosition } from '../components/Board';
 import { DataTable, type Column } from '../components/DataTable';
+import { HorizonFilter, HorizonSelect } from '../components/HorizonSelect';
 import { boardOrderKey, StatusSelect } from '../components/StatusSelect';
 import { TrashButton } from '../components/TrashButton';
-import { Avatar, EmptyState, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
+import { Avatar, EmptyState, HorizonBadge, ErrorText, Field, Modal, PageHeader, ProgressBar, Spinner, StatusPill, ViewToggle, type BoardView } from '../components/ui';
 import { api, type Epic } from '../lib/api';
 import { fmtDate, fmtDateOfInstant } from '../lib/format';
 import { usePersistentState } from '../lib/prefs';
@@ -32,6 +33,7 @@ function EpicBoardCard({ epic: e, overlay }: { epic: Epic; overlay?: boolean }) 
       <div className="mb-1.5 flex items-start gap-2">
         <Flag size={14} className="mt-0.5 shrink-0 text-slate-500" />
         <h3 className="flex-1 text-sm leading-snug font-medium text-slate-700">{e.name}</h3>
+        <HorizonBadge horizon={e.horizon} />
         {e.owner_name && <Avatar name={e.owner_name} id={e.owner_id} />}
       </div>
       {e.okr && <p className="mb-2 line-clamp-2 text-[11px] text-slate-500">🎯 {e.okr}</p>}
@@ -55,12 +57,17 @@ function EpicBoardCard({ epic: e, overlay }: { epic: Epic; overlay?: boolean }) 
 export function EpicsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [prefs, setPrefs] = usePersistentState('epics.prefs', { view: 'kanban' as BoardView, sort: 'manual' as EpicSort, showInactive: false });
+  const [prefs, setPrefs] = usePersistentState('epics.prefs', {
+    view: 'kanban' as BoardView,
+    sort: 'manual' as EpicSort,
+    showInactive: false,
+    horizon: '',
+  });
   const { showInactive } = prefs;
   const { data: allEpics, isLoading, error } = useEpics(showInactive);
   const { data: statuses } = useStatuses();
   const [editing, setEditing] = useState<Epic | { status_id: number } | 'new' | null>(null);
-  const epics = allEpics ?? [];
+  const epics = (allEpics ?? []).filter((e) => !prefs.horizon || e.horizon === prefs.horizon);
   const sortColumn = (l: Epic[]) =>
     prefs.sort === 'name'
       ? [...l].sort((a, b) => a.name.localeCompare(b.name))
@@ -71,6 +78,7 @@ export function EpicsPage() {
 
   const columns: Column<Epic>[] = [
     { key: 'name', label: 'Épico', sort: (e) => e.name.toLowerCase(), render: (e) => <span className="font-medium text-slate-900">{e.name}</span>, className: 'min-w-56', wrap: true },
+    { key: 'horizon', label: 'Horizonte', sort: (e) => e.horizon, render: (e) => (e.horizon ? <HorizonBadge horizon={e.horizon} full /> : '—') },
     { key: 'status', label: 'Status', sort: order, render: (e) => <StatusPill name={e.status_name} color={e.status_color} /> },
     { key: 'okr', label: 'Objetivo / OKR', sort: (e) => e.okr, render: (e) => <span className="line-clamp-2 text-slate-600">{e.okr ?? '—'}</span>, className: 'min-w-48', wrap: true },
     { key: 'owner', label: 'Responsável', sort: (e) => e.owner_name, render: (e) => e.owner_name ?? '—' },
@@ -114,6 +122,7 @@ export function EpicsPage() {
                 <option value="created_at">Ordenar: Data de criação (mais recente primeiro)</option>
               </select>
             )}
+            <HorizonFilter value={prefs.horizon} onChange={(horizon) => setPrefs((p) => ({ ...p, horizon }))} />
             <label
               className={`flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-sm text-slate-600${showInactive ? ' filter-active' : ''}`}
             >
@@ -188,6 +197,7 @@ export function EpicDetailPage() {
             <div className="mb-1 flex items-center gap-2">
               <h1 className="text-xl font-semibold text-slate-900">{epic.name}</h1>
               <StatusPill name={epic.status_name} color={epic.status_color} />
+              <HorizonBadge horizon={epic.horizon} full />
               {!epic.active && <span className="rounded bg-slate-200 px-1.5 text-xs">Inativo</span>}
             </div>
             {epic.okr && <p className="text-sm text-slate-600">🎯 {epic.okr}</p>}
@@ -281,6 +291,7 @@ export function EpicFormModal({
     okr: epic?.okr ?? '',
     owner_id: epic?.owner_id ? String(epic.owner_id) : '',
     status_id: String(epic?.status_id ?? defaultStatusId ?? ''),
+    horizon: epic?.horizon ?? '',
     start_date: epic?.start_date ?? '',
     end_date: epic?.end_date ?? '',
     active: epic ? !!epic.active : true,
@@ -340,6 +351,9 @@ export function EpicFormModal({
           </Field>
           <Field label="Status">
             <StatusSelect value={f.status_id} onChange={(v) => setF((p) => ({ ...p, status_id: v }))} />
+          </Field>
+          <Field label="Horizonte (3 horizontes)">
+            <HorizonSelect value={f.horizon} onChange={(v) => setF((p) => ({ ...p, horizon: v }))} />
           </Field>
           <Field label="Data inicial">
             <input className="input" type="date" value={f.start_date} onChange={set('start_date')} />
