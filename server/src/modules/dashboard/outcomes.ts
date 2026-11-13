@@ -1,7 +1,8 @@
 /**
  * Indicadores do dashboard na visão "Outcomes" (funções puras, testáveis sem banco).
  *  - Abertos: não estão em status de conclusão nem "encerra sem entrega".
- *  - Progresso do indicador: quanto do caminho baseline → meta já foi percorrido (0–100%).
+ *  - Progresso do indicador: quanto do caminho Atual (baseline_value) → Meta (target_value) o Resultado
+ *    (current_value) já percorreu (0–100%).
  *  - Meta atingida: progresso de 100% (outcomes não cancelados, com indicador completo).
  *  - Atrasados: abertos com data alvo anterior a hoje.
  *  - Criados no período: data de criação (local) dentro do período.

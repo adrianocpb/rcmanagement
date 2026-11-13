@@ -113,7 +113,7 @@ describe('conector MCP', () => {
     expect(detail.history[0].changed_by_name).toBe('Maria'); // ação registrada em nome do dono do token
 
     const edited = (await call('atualizar_outcome', { id: outcome.id, current_value: 25 })).data;
-    expect(edited.indicador).toMatchObject({ baseline: 40, atual: 25, meta: 10, nome: 'Tempo de espera' });
+    expect(edited.indicador).toMatchObject({ atual: 40, meta: 10, resultado: 25, nome: 'Tempo de espera' });
     expect(edited.nome).toBe('Reduzir filas no balcão');
 
     const done = c.status.find((s: { conclusao: number }) => s.conclusao);

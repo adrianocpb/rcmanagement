@@ -409,7 +409,7 @@ function OutcomesBody({ data }: { data: OutcomeDashboardData }) {
           label="Progresso médio do indicador"
           value={ind.avg_progress_open == null ? '—' : `${ind.avg_progress_open}%`}
           hint={`${ind.open_measured} aberto(s) medido(s)${ind.open_without_indicator ? ` · ${ind.open_without_indicator} sem indicador` : ''}`}
-          title="Quanto do caminho baseline → meta os outcomes abertos já percorreram (média)."
+          title="Quanto do caminho Atual → Meta o Resultado dos outcomes abertos já percorreu (média)."
         />
         <Kpi icon={<Trophy size={16} />} label="Meta atingida" value={String(ind.reached)} hint={`de ${ind.measured} com indicador completo`} />
         <Kpi
@@ -429,7 +429,7 @@ function OutcomesBody({ data }: { data: OutcomeDashboardData }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Progresso do indicador" subtitle="Outcomes abertos: quanto do caminho baseline → meta já foi percorrido" className="lg:col-span-2">
+        <ChartCard title="Progresso do indicador" subtitle="Outcomes abertos: quanto do caminho Atual → Meta o Resultado já percorreu" className="lg:col-span-2">
           {data.progress.length ? (
             <ResponsiveContainer width="100%" height={Math.max(140, data.progress.length * 40)}>
               <BarChart data={data.progress} layout="vertical" margin={{ top: 0, right: 48, left: 8, bottom: 0 }}>
@@ -445,7 +445,8 @@ function OutcomesBody({ data }: { data: OutcomeDashboardData }) {
                         <div className="font-medium text-slate-900">{p.name}</div>
                         <div className="mb-1 text-slate-500">Épico: {p.epic_name}</div>
                         <div className="text-slate-600">
-                          {p.indicator_name}: {val(p.baseline, p.unit)} → <b className="text-slate-900">{val(p.current, p.unit)}</b> → {val(p.target, p.unit)}
+                          {p.indicator_name}: atual {val(p.baseline, p.unit)} → meta {val(p.target, p.unit)} · resultado{' '}
+                          <b className="text-slate-900">{val(p.current, p.unit)}</b>
                         </div>
                         <div className="text-slate-600">
                           Progresso: <b className="text-slate-900">{p.progress}%</b>
@@ -469,7 +470,7 @@ function OutcomesBody({ data }: { data: OutcomeDashboardData }) {
             </ResponsiveContainer>
           ) : (
             <div className="flex h-[140px] items-center justify-center text-sm text-slate-400">
-              Nenhum outcome aberto com indicador completo (baseline, atual e meta).
+              Nenhum outcome aberto com indicador completo (atual, meta e resultado).
             </div>
           )}
         </ChartCard>

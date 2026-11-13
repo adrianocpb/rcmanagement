@@ -11,7 +11,7 @@ Sistema web interno (MVP) para acompanhar as entregas da área de Desenvolviment
   status, responsável, solicitante, setor, prioridade, épico, outcome, período e "somente atrasadas".
 - **Regras automáticas**: data de criação, início real e conclusão real preenchidos pelas mudanças
   de status (baseadas em flags configuráveis, não no nome), indicação de atraso e histórico completo.
-- **Épicos** (ligados a um OKR) e **Outcomes** com indicador de negócio (baseline → atual → meta).
+- **Épicos** (ligados a um OKR) e **Outcomes** com indicador de negócio: **Atual → Meta**, e o **Resultado** alcançado.
   Cada outcome tem uma **cor** (escolhida automaticamente ou no cadastro) que aparece como tag nas
   tarefas — cards do Kanban, lista e detalhe.
 - **Comentários nas tarefas**: texto com links clicáveis e até 5 anexos por comentário (10 MB no

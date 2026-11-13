@@ -69,7 +69,7 @@ outcome muda de épico). Uma tarefa pode estar ligada diretamente a um épico se
 | `?task=ID` | Modal de detalhe da tarefa (Informações, Relacionamentos, Pessoas, Planejamento, Execução, Histórico) com edição, troca rápida de status e exclusão. |
 | `/dashboard` | Cards (Cycle Time, Lead Time, Throughput, Criadas, WIP, Atrasadas) + 4 gráficos, com filtros. |
 | `/epicos`, `/epicos/:id` | Cards com OKR, responsável, status, nº de outcomes/tarefas e progresso; detalhe com outcomes. |
-| `/outcomes`, `/outcomes/:id` | Cards com indicador Baseline → Atual → Meta; detalhe com tarefas relacionadas. |
+| `/outcomes`, `/outcomes/:id` | Cards com indicador Atual → Meta e Resultado (no banco: baseline_value, target_value, current_value); detalhe com tarefas relacionadas. |
 | `/admin` | Status (criar, editar, ordenar, ativar/desativar, padrão/início/conclusão), Usuários e Setores. |
 
 ## 5. Regras de negócio
@@ -193,7 +193,7 @@ fora da lixeira:
 |---|---|
 | Outcomes abertos | Não estão em status de conclusão nem "encerra sem entrega" |
 | Concluídos | Em status de conclusão (retrato atual); "criados no período" pela data de criação |
-| Progresso médio do indicador | Média, nos abertos com baseline, atual e meta, de (atual − baseline) / (meta − baseline), limitado a 0–100% |
+| Progresso médio do indicador | Média, nos abertos com atual, meta e resultado, de (resultado − atual) / (meta − atual), limitado a 0–100% |
 | Meta atingida | Outcomes (não cancelados) com progresso de 100% |
 | Atrasados | Abertos com data alvo anterior a hoje |
 | Tempo médio com flag | Mesma regra das tarefas, com as flags dos outcomes |

@@ -19,7 +19,10 @@ import { usePersistentState } from '../lib/prefs';
 import { useEpics, useOutcomes, useStatuses, useUserOptions } from '../lib/queries';
 import { Info, pct, sortByCreatedDesc } from './EpicsPage';
 
-/** Progresso do indicador de negócio: quanto do caminho baseline → meta já foi percorrido. */
+/**
+ * Progresso do indicador de negócio: quanto do caminho Atual → Meta o Resultado já percorreu.
+ * (No banco: Atual = baseline_value, Meta = target_value, Resultado = current_value.)
+ */
 export function indicatorProgress(o: Outcome): number | null {
   const { baseline_value: b, target_value: t, current_value: c } = o;
   if (b == null || t == null || c == null || b === t) return null;
@@ -42,19 +45,19 @@ export function IndicatorStrip({ outcome, large }: { outcome: Outcome; large?: b
         {outcome.indicator_unit && ` (${outcome.indicator_unit})`}
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-lg bg-slate-50 p-2 text-center">
-          <div className="text-[11px] text-slate-500 uppercase">Baseline</div>
+        <div className="flex-1 rounded-lg bg-slate-50 p-2 text-center" title="Situação de hoje, antes da melhoria">
+          <div className="text-[11px] text-slate-500 uppercase">Atual</div>
           <div className={`${val} font-semibold text-slate-600 tabular-nums`}>{fmtValue(outcome.baseline_value, large ? outcome.indicator_unit : null)}</div>
         </div>
         <ArrowRight size={16} className="shrink-0 text-slate-300" />
-        <div className="flex-1 rounded-lg bg-blue-50 p-2 text-center ring-1 ring-blue-200">
-          <div className="text-[11px] text-blue-700 uppercase">Atual</div>
-          <div className={`${val} font-bold text-blue-700 tabular-nums`}>{fmtValue(outcome.current_value, large ? outcome.indicator_unit : null)}</div>
-        </div>
-        <ArrowRight size={16} className="shrink-0 text-slate-300" />
-        <div className="flex-1 rounded-lg bg-green-50 p-2 text-center">
+        <div className="flex-1 rounded-lg bg-green-50 p-2 text-center" title="Onde queremos chegar">
           <div className="text-[11px] text-green-700 uppercase">Meta</div>
           <div className={`${val} font-semibold text-green-700 tabular-nums`}>{fmtValue(outcome.target_value, large ? outcome.indicator_unit : null)}</div>
+        </div>
+        <ArrowRight size={16} className="shrink-0 text-slate-300" />
+        <div className="flex-1 rounded-lg bg-blue-50 p-2 text-center ring-1 ring-blue-200" title="Valor alcançado na última medição">
+          <div className="text-[11px] text-blue-700 uppercase">Resultado</div>
+          <div className={`${val} font-bold text-blue-700 tabular-nums`}>{fmtValue(outcome.current_value, large ? outcome.indicator_unit : null)}</div>
         </div>
       </div>
       {prog !== null && (
@@ -117,7 +120,8 @@ function OutcomeBoardCard({ outcome: o, overlay }: { outcome: Outcome; overlay?:
       {o.indicator_name && (
         <div className="mb-1.5 text-[11px] text-slate-500">
           <div className="truncate" title={o.indicator_name}>
-            {o.indicator_name}: <b className="text-slate-700">{fmtValue(o.current_value, o.indicator_unit)}</b> → {fmtValue(o.target_value, o.indicator_unit)}
+            {o.indicator_name}: {fmtValue(o.baseline_value, o.indicator_unit)} → {fmtValue(o.target_value, o.indicator_unit)} · resultado{' '}
+            <b className="text-slate-700">{fmtValue(o.current_value, o.indicator_unit)}</b>
           </div>
           {prog !== null && (
             <div className="mt-1 flex items-center gap-2">
@@ -174,13 +178,13 @@ export function OutcomesPage() {
     { key: 'owner', label: 'Responsável', sort: (o) => o.owner_name, render: (o) => o.owner_name ?? '—' },
     {
       key: 'indicator',
-      label: 'Indicador (atual → meta)',
+      label: 'Indicador (atual → meta · resultado)',
       sort: (o) => indicatorProgress(o),
       defaultDir: -1,
       render: (o) =>
         o.indicator_name ? (
           <span title={o.indicator_name}>
-            {fmtValue(o.current_value, o.indicator_unit)} → {fmtValue(o.target_value, o.indicator_unit)}
+            {fmtValue(o.baseline_value, o.indicator_unit)} → {fmtValue(o.target_value, o.indicator_unit)} · <b>{fmtValue(o.current_value, o.indicator_unit)}</b>
             {indicatorProgress(o) !== null && <span className="ml-1 text-xs text-slate-500">({indicatorProgress(o)}%)</span>}
           </span>
         ) : (
@@ -582,16 +586,20 @@ export function OutcomeFormModal({
             </Field>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-3">
-            <Field label="Baseline">
-              <input className="input" type="number" step="any" value={f.baseline_value} onChange={set('baseline_value')} />
-            </Field>
             <Field label="Atual">
-              <input className="input" type="number" step="any" value={f.current_value} onChange={set('current_value')} />
+              <input className="input" type="number" step="any" value={f.baseline_value} onChange={set('baseline_value')} placeholder="hoje" />
             </Field>
             <Field label="Meta">
-              <input className="input" type="number" step="any" value={f.target_value} onChange={set('target_value')} />
+              <input className="input" type="number" step="any" value={f.target_value} onChange={set('target_value')} placeholder="onde chegar" />
+            </Field>
+            <Field label="Resultado">
+              <input className="input" type="number" step="any" value={f.current_value} onChange={set('current_value')} placeholder="alcançado" />
             </Field>
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            <b>Atual</b>: situação de hoje, antes da melhoria · <b>Meta</b>: onde queremos chegar · <b>Resultado</b>: valor alcançado (atualize a
+            cada medição). O progresso é quanto do caminho Atual → Meta o Resultado já percorreu.
+          </p>
         </fieldset>
         <IceFields values={f} onChange={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
         <label className="flex items-center gap-2 text-sm">

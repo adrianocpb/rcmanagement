@@ -28,7 +28,7 @@ import { createOutcome, getOutcome, listOutcomes, updateOutcome } from './outcom
 import { createTask, getTask, listTasks, updateTask } from './tasks/service.js';
 
 const INSTRUCTIONS = `Sistema "Gestão de Melhorias" (RC+): épicos (estratégicos, ligados a um OKR) → outcomes
-(resultados de negócio com indicador baseline → atual → meta) → tarefas (entregas). Todos usam as mesmas
+(resultados de negócio com indicador: Atual → Meta, e o Resultado alcançado) → tarefas (entregas). Todos usam as mesmas
 colunas (status) do quadro Kanban. Épicos e outcomes podem ter um horizonte (modelo dos 3 horizontes):
 H1 = negócio atual (core), H2 = expansão/emergente, H3 = novas apostas de futuro.
 Boas práticas:
@@ -62,7 +62,7 @@ const outcomeSummary = (o: Row) => ({
   status: o.status_name,
   responsavel: o.owner_name,
   indicador: o.indicator_name
-    ? { nome: o.indicator_name, unidade: o.indicator_unit, baseline: o.baseline_value, atual: o.current_value, meta: o.target_value }
+    ? { nome: o.indicator_name, unidade: o.indicator_unit, atual: o.baseline_value, meta: o.target_value, resultado: o.current_value }
     : null,
   tarefas_concluidas: `${o.tasks_done}/${o.tasks_count}`,
   ice_score: o.ice_score,
@@ -144,9 +144,9 @@ const outcomeFields = {
   target_date: date.nullable().optional().describe('Data alvo'),
   indicator_name: text(200).nullable().optional().describe('Nome do indicador de negócio (ex.: "Tempo médio de atendimento")'),
   indicator_unit: text(40).nullable().optional().describe('Unidade (ex.: horas, %, R$)'),
-  baseline_value: z.number().nullable().optional().describe('Valor de partida do indicador'),
-  current_value: z.number().nullable().optional().describe('Valor atual do indicador'),
-  target_value: z.number().nullable().optional().describe('Meta do indicador'),
+  baseline_value: z.number().nullable().optional().describe('ATUAL: situação de hoje, antes da melhoria (ponto de partida)'),
+  target_value: z.number().nullable().optional().describe('META: onde queremos chegar'),
+  current_value: z.number().nullable().optional().describe('RESULTADO: valor alcançado na última medição (atualize a cada medição)'),
   ice_impact: ice.nullable().optional().describe('ICE: impacto (1–10)'),
   ice_confidence: ice.nullable().optional().describe('ICE: confiança (1–10)'),
   ice_ease: ice.nullable().optional().describe('ICE: facilidade (1–10)'),
@@ -420,7 +420,7 @@ export function buildMcpServer(db: DB, user: AuthUser) {
     {
       title: 'Editar outcome',
       description:
-        'Altera só os campos informados de um outcome (ex.: valor atual do indicador, status, épico). Confirme com o usuário antes.',
+        'Altera só os campos informados de um outcome (ex.: o resultado medido do indicador, status, épico). Confirme com o usuário antes.',
       inputSchema: {
         id,
         epic_id: id.optional().describe('Mover para outro épico (as tarefas acompanham)'),
